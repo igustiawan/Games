@@ -34,8 +34,9 @@ let currentPiece, nextPiece, holdPiece, canHold;
 let score, highScore, level, lines, combo;
 let dropTimer, lockTimer, animFrame;
 let particles = [];
-let lineClearAnim = []; // { row, progress }
-let smoothY = 0; // smooth falling offset
+let lineClearAnim = [];
+let smoothY = 0;
+let softDropTimer = 0;
 
 highScore = parseInt(localStorage.getItem('tetrisHS') || '0');
 
@@ -220,13 +221,28 @@ function update(time) {
     lastTime = time;
     animFrame++;
 
+    // DAS - auto repeat left/right
+    if (dasDir !== 0) {
+        dasTimer -= dt;
+        if (dasTimer <= 0) {
+            if (dasDir === -1) moveLeft();
+            else moveRight();
+            dasTimer = DAS_SPEED;
+        }
+    }
+
+    // Soft drop repeat (hold down)
+    if (keysDown['ArrowDown'] || keysDown['KeyS']) {
+        softDropTimer -= dt;
+        if (softDropTimer <= 0) { softDrop(); softDropTimer = 40; }
+    } else { softDropTimer = 0; }
+
     // Drop speed based on level
-    const dropSpeed = Math.max(100, DROP_INTERVAL - (level - 1) * 60);
+    const dropSpeed = Math.max(80, DROP_INTERVAL - (level - 1) * 70);
     dropTimer += dt;
 
     // Smooth fall offset
-    smoothY += SMOOTH_SPEED * (dt / 16);
-    if (smoothY > 1) smoothY = 1;
+    smoothY = Math.min(1, smoothY + SMOOTH_SPEED * (dt / 16));
 
     if (dropTimer >= dropSpeed) {
         dropTimer = 0;
@@ -319,18 +335,14 @@ function drawBoard() {
 function drawBlock(x, y, size, color, glow, flash) {
     const s = size - 2;
     const bx = x + 1, by = y + 1;
-    // Glow
-    ctx.shadowColor = flash ? '#fff' : glow;
-    ctx.shadowBlur = flash ? 15 : 6;
     ctx.fillStyle = flash ? '#fff' : color;
-    roundRectFill(bx, by, s, s, 4);
-    ctx.shadowBlur = 0;
+    roundRectFill(bx, by, s, s, 3);
     // Highlight (top-left shine)
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    roundRectFill(bx + 2, by + 2, s * 0.4, s * 0.4, 2);
-    // Dark edge (bottom-right)
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    roundRectFill(bx + 2, by + 2, s * 0.35, s * 0.35, 2);
+    // Dark edge
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.fillRect(bx + s * 0.6, by + s * 0.6, s * 0.35, s * 0.35);
+    roundRectFill(bx + s * 0.6, by + s * 0.6, s * 0.35, s * 0.35, 2);
 }
 
 function roundRectFill(x, y, w, h, r) {
@@ -464,28 +476,59 @@ function drawDead() {
 }
 
 // ===== INPUT =====
+let keysDown = {};
+let dasTimer = 0, dasDir = 0;
+const DAS_DELAY = 120; // ms before auto-repeat
+const DAS_SPEED = 40; // ms between repeats
+
 document.addEventListener('keydown', e => {
     if (state === 'menu' || state === 'dead') { if (e.code === 'Space' || e.code === 'Enter') initGame(); return; }
     if (state !== 'playing') return;
-    switch (e.code) {
-        case 'ArrowLeft': case 'KeyA': moveLeft(); break;
-        case 'ArrowRight': case 'KeyD': moveRight(); break;
-        case 'ArrowDown': case 'KeyS': softDrop(); break;
-        case 'ArrowUp': case 'KeyW': rotate(); break;
-        case 'Space': hardDrop(); break;
-        case 'KeyC': case 'ShiftLeft': hold(); break;
+    if (!keysDown[e.code]) {
+        keysDown[e.code] = true;
+        switch (e.code) {
+            case 'ArrowLeft': case 'KeyA': moveLeft(); dasDir = -1; dasTimer = DAS_DELAY; break;
+            case 'ArrowRight': case 'KeyD': moveRight(); dasDir = 1; dasTimer = DAS_DELAY; break;
+            case 'ArrowDown': case 'KeyS': softDrop(); break;
+            case 'ArrowUp': case 'KeyW': rotate(); break;
+            case 'Space': hardDrop(); break;
+            case 'KeyC': case 'ShiftLeft': hold(); break;
+        }
     }
     e.preventDefault();
 });
 
-// Touch controls
-let touchX = 0, touchY = 0, touchTime = 0;
+document.addEventListener('keyup', e => {
+    keysDown[e.code] = false;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.code === 'ArrowRight' || e.code === 'KeyD') dasDir = 0;
+});
+
+// Touch controls - instant response
+let touchX = 0, touchY = 0, touchTime = 0, touchMoved = false;
 canvas.addEventListener('touchstart', e => {
     const t = e.touches[0];
-    touchX = t.clientX; touchY = t.clientY; touchTime = Date.now();
+    touchX = t.clientX; touchY = t.clientY; touchTime = Date.now(); touchMoved = false;
     if (state === 'menu' || state === 'dead') {
         if (t.clientX > W/2-100 && t.clientX < W/2+100 && t.clientY > H/2-10 && t.clientY < H/2+45) initGame();
         else if (state === 'dead' && t.clientX > W/2-100 && t.clientX < W/2+100 && t.clientY > H/2+25 && t.clientY < H/2+80) initGame();
+    }
+    e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    if (state !== 'playing') return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchX;
+    const dy = t.clientY - touchY;
+    // Horizontal moves (every 30px = 1 cell move)
+    if (Math.abs(dx) > 30) {
+        if (dx > 0) moveRight(); else moveLeft();
+        touchX = t.clientX;
+        touchMoved = true;
+    }
+    // Swipe down = soft drop
+    if (dy > 40) {
+        softDrop(); touchY = t.clientY; touchMoved = true;
     }
     e.preventDefault();
 }, { passive: false });
@@ -495,14 +538,9 @@ canvas.addEventListener('touchend', e => {
     const t = e.changedTouches[0];
     const dx = t.clientX - touchX, dy = t.clientY - touchY;
     const elapsed = Date.now() - touchTime;
-    if (elapsed < 200 && Math.abs(dx) < 20 && Math.abs(dy) < 20) { rotate(); return; } // Tap = rotate
-    if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx > 30) moveRight();
-        else if (dx < -30) moveLeft();
-    } else {
-        if (dy > 50) hardDrop();
-        else if (dy < -30) hold();
-    }
+    if (!touchMoved && elapsed < 250) { rotate(); return; } // Tap = rotate
+    if (!touchMoved && dy < -40) { hold(); return; } // Swipe up = hold
+    if (!touchMoved && dy > 80) { hardDrop(); } // Fast swipe down = hard drop
     e.preventDefault();
 }, { passive: false });
 
