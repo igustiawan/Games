@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dino Run!</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; background: #1a1a2e; }
+        body { display: flex; align-items: center; justify-content: center; font-family: -apple-system, sans-serif; min-height: 100dvh; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+// ===== GAME STATE =====
+let state = 'menu'; // menu, playing, dead
+let dino, obstacles, powerUps, particles, clouds, stars;
+let score, highScore, speed, distance, groundY;
+let animFrame = 0;
+let combo = 0;
+let comboTimer = 0;
+let screenShake = 0;
+let boss = null;
+let bossTimer = 0;
+
+highScore = parseInt(localStorage.getItem('dinoHS') || '0');
+
+// ===== CONSTANTS =====
+const GRAVITY = 0.6;
+const JUMP_FORCE = -13;
+const DOUBLE_JUMP_FORCE = -11;
+const BASE_SPEED = 6;
+const GROUND_OFFSET = 80;
+
+// Power-up types
+const POWERUP_TYPES = [
+    { type: 'shield', color: '#00e5ff', emoji: '🛡', duration: 300, desc: 'Kebal!' },
+    { type: 'magnet', color: '#ffd600', emoji: '🧲', duration: 250, desc: 'Magnet koin!' },
+    { type: 'tiny', color: '#e040fb', emoji: '🔮', duration: 200, desc: 'Jadi kecil!' },
+    { type: 'slow', color: '#76ff03', emoji: '⏳', duration: 200, desc: 'Slow motion!' },
+];
+
+// Obstacle types
+const OBS_TYPES = [
+    { type: 'cactus_small', w: 20, h: 40, color: '#4caf50' },
+    { type: 'cactus_big', w: 30, h: 60, color: '#388e3c' },
+    { type: 'rock', w: 35, h: 25, color: '#616161' },
+    { type: 'bird', w: 35, h: 25, color: '#ff5722', flying: true },
+    { type: 'double_cactus', w: 50, h: 50, color: '#2e7d32' },
+];
+
+
+
+
+// ===== INIT =====
+function initGame() {
+    groundY = H - GROUND_OFFSET;
+    dino = {
+        x: 80, y: groundY,
+        vy: 0, w: 40, h: 50,
+        jumping: false, doubleJumped: false,
+        ducking: false,
+        shield: 0, magnet: 0, tiny: 0, slow: 0,
+        invincible: 0,
+        runFrame: 0
+    };
+    obstacles = [];
+    powerUps = [];
+    particles = [];
+    clouds = [];
+    stars = [];
+    score = 0;
+    speed = BASE_SPEED;
+    distance = 0;
+    combo = 0; comboTimer = 0;
+    screenShake = 0;
+    boss = null; bossTimer = 0;
+    // Generate initial clouds/stars
+    for (let i = 0; i < 15; i++) stars.push({ x: Math.random() * W, y: Math.random() * (groundY - 100), size: Math.random() * 2 + 1, speed: Math.random() * 0.3 + 0.1 });
+    for (let i = 0; i < 4; i++) clouds.push({ x: Math.random() * W, y: 50 + Math.random() * 150, w: 60 + Math.random() * 80, speed: 0.5 + Math.random() * 0.5 });
+    state = 'playing';
+}
+
+function jump() {
+    if (state === 'menu') { initGame(); return; }
+    if (state === 'dead') { initGame(); return; }
+    if (state !== 'playing') return;
+    if (dino.ducking) { dino.ducking = false; return; }
+    if (!dino.jumping) {
+        dino.vy = JUMP_FORCE;
+        dino.jumping = true;
+        dino.doubleJumped = false;
+        spawnParticles(dino.x + dino.w / 2, groundY, '#888', 5);
+    } else if (!dino.doubleJumped) {
+        dino.vy = DOUBLE_JUMP_FORCE;
+        dino.doubleJumped = true;
+        spawnParticles(dino.x + dino.w / 2, dino.y + dino.h, '#00e5ff', 5);
+    }
+}
+
+function duck(active) {
+    if (state !== 'playing') return;
+    dino.ducking = active;
+    if (active && !dino.jumping) {
+        dino.h = 30;
+    } else {
+        dino.h = dino.tiny > 0 ? 35 : 50;
+    }
+}
+
+function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        particles.push({ x, y, vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 4 - 1, life: 1, color, size: Math.random() * 4 + 2 });
+    }
+}
+
+function spawnObstacle() {
+    const type = OBS_TYPES[Math.floor(Math.random() * OBS_TYPES.length)];
+    const obs = { ...type, x: W + 50, scored: false };
+    if (type.flying) {
+        obs.y = groundY - 60 - Math.random() * 80;
+    } else {
+        obs.y = groundY - type.h;
+    }
+    obstacles.push(obs);
+}
+
+function spawnPowerUp() {
+    const type = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+    powerUps.push({ ...type, x: W + 50, y: groundY - 80 - Math.random() * 60, pulse: 0 });
+}
+
+function spawnBoss() {
+    boss = {
+        x: W + 50, y: groundY - 100,
+        w: 60, h: 80,
+        hp: 10 + Math.floor(distance / 3000),
+        maxHp: 10 + Math.floor(distance / 3000),
+        color: '#f44336',
+        attackTimer: 60,
+        phase: 0
+    };
+}
+
+
+
+// ===== UPDATE =====
+function update() {
+    if (state !== 'playing') return;
+    animFrame++;
+    const spdMult = dino.slow > 0 ? 0.5 : 1;
+    const curSpeed = speed * spdMult;
+    distance += curSpeed;
+    score = Math.floor(distance / 10);
+
+    // Increase speed over time
+    speed = BASE_SPEED + distance / 2000;
+
+    // Dino physics
+    dino.vy += GRAVITY;
+    dino.y += dino.vy;
+    if (dino.y >= groundY - (dino.ducking ? 30 : (dino.tiny > 0 ? 35 : 50))) {
+        dino.y = groundY - (dino.ducking ? 30 : (dino.tiny > 0 ? 35 : 50));
+        dino.vy = 0;
+        dino.jumping = false;
+        dino.doubleJumped = false;
+    }
+    dino.runFrame += 0.15 * spdMult;
+    if (dino.tiny > 0) { dino.tiny--; if (dino.tiny <= 0 && !dino.ducking) dino.h = 50; }
+    if (dino.shield > 0) dino.shield--;
+    if (dino.magnet > 0) dino.magnet--;
+    if (dino.slow > 0) dino.slow--;
+    if (dino.invincible > 0) dino.invincible--;
+    if (comboTimer > 0) comboTimer--;
+    else combo = 0;
+    if (screenShake > 0) screenShake--;
+
+    // Spawn obstacles
+    const lastObs = obstacles[obstacles.length - 1];
+    const minGap = 250 / (speed / BASE_SPEED);
+    if (!lastObs || lastObs.x < W - (minGap + Math.random() * 200)) {
+        if (Math.random() < 0.03 + speed * 0.005) spawnObstacle();
+    }
+
+    // Spawn power-ups
+    if (Math.random() < 0.003) spawnPowerUp();
+
+    // Spawn boss every 5000 distance
+    if (!boss && distance > 0 && Math.floor(distance / 5000) > bossTimer) {
+        bossTimer = Math.floor(distance / 5000);
+        spawnBoss();
+    }
+
+    // Update obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const o = obstacles[i];
+        o.x -= curSpeed;
+        if (o.x + o.w < 0) { obstacles.splice(i, 1); continue; }
+        // Score
+        if (!o.scored && o.x + o.w < dino.x) {
+            o.scored = true;
+            combo++;
+            comboTimer = 60;
+            if (combo >= 5) { score += combo * 2; spawnParticles(dino.x + 20, dino.y, '#ffd600', 3); }
+        }
+        // Collision
+        if (checkCollision(dino, o)) {
+            if (dino.shield > 0 || dino.invincible > 0) {
+                obstacles.splice(i, 1);
+                spawnParticles(o.x + o.w / 2, o.y + o.h / 2, '#00e5ff', 8);
+                screenShake = 5;
+            } else {
+                die(); return;
+            }
+        }
+    }
+
+    // Update power-ups
+    for (let i = powerUps.length - 1; i >= 0; i--) {
+        const p = powerUps[i];
+        p.x -= curSpeed;
+        p.pulse += 0.1;
+        // Magnet effect
+        if (dino.magnet > 0) {
+            const dx = (dino.x + dino.w / 2) - p.x, dy = (dino.y + dino.h / 2) - p.y;
+            const len = Math.hypot(dx, dy);
+            if (len < 200) { p.x += (dx / len) * 5; p.y += (dy / len) * 5; }
+        }
+        if (p.x < -50) { powerUps.splice(i, 1); continue; }
+        // Collect
+        if (Math.abs(p.x - dino.x) < 40 && Math.abs(p.y - dino.y) < 50) {
+            activatePowerUp(p);
+            powerUps.splice(i, 1);
+        }
+    }
+
+    // Update boss
+    if (boss) {
+        boss.x = Math.max(W - 150, boss.x - 2);
+        boss.attackTimer--;
+        if (boss.attackTimer <= 0) {
+            boss.attackTimer = 40 + Math.floor(Math.random() * 30);
+            // Boss attacks: spawn obstacle
+            obstacles.push({ type: 'fireball', x: boss.x - 20, y: boss.y + 40, w: 20, h: 20, color: '#ff5722', scored: false });
+        }
+        // Boss takes damage from jumps over fireballs (scored = combo)
+        if (combo > 0 && animFrame % 30 === 0) {
+            boss.hp--;
+            spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#f44336', 5);
+            screenShake = 3;
+        }
+        if (boss.hp <= 0) {
+            score += 500;
+            spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd600', 25);
+            screenShake = 15;
+            boss = null;
+        }
+    }
+
+    // Update particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 0.03;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    // Update clouds/stars
+    clouds.forEach(c => { c.x -= c.speed * spdMult; if (c.x + c.w < 0) { c.x = W + 50; c.y = 50 + Math.random() * 150; } });
+    stars.forEach(s => { s.x -= s.speed * spdMult; if (s.x < 0) s.x = W; });
+
+    draw();
+}
+
+function checkCollision(d, o) {
+    const dx = d.x, dy = d.y, dw = d.w * (d.tiny > 0 ? 0.6 : 1), dh = d.h;
+    const shrink = 8; // Hitbox shrink for forgiveness
+    return dx + shrink < o.x + o.w && dx + dw - shrink > o.x && dy + shrink < o.y + o.h && dy + dh - shrink > o.y;
+}
+
+function activatePowerUp(p) {
+    spawnParticles(p.x, p.y, p.color, 10);
+    screenShake = 3;
+    switch (p.type) {
+        case 'shield': dino.shield = p.duration; break;
+        case 'magnet': dino.magnet = p.duration; break;
+        case 'tiny': dino.tiny = p.duration; dino.h = 35; break;
+        case 'slow': dino.slow = p.duration; break;
+    }
+}
+
+function die() {
+    state = 'dead';
+    if (score > highScore) { highScore = score; localStorage.setItem('dinoHS', highScore); }
+    spawnParticles(dino.x + dino.w / 2, dino.y + dino.h / 2, '#ff1744', 20);
+    screenShake = 20;
+    if (navigator.vibrate) navigator.vibrate([100, 50, 150]);
+}
+
+
+
+// ===== DRAWING =====
+function draw() {
+    const shake = screenShake > 0 ? (Math.random() - 0.5) * screenShake : 0;
+    ctx.save();
+    ctx.translate(shake, shake * 0.5);
+
+    // Sky gradient (gets darker as speed increases)
+    const skyDark = Math.min(0.8, distance / 20000);
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, `rgba(10, 10, ${30 + (1-skyDark)*20}, 1)`);
+    grad.addColorStop(1, `rgba(20, 20, ${50 + (1-skyDark)*30}, 1)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Stars
+    stars.forEach(s => {
+        ctx.fillStyle = `rgba(255,255,255,${0.3 + Math.sin(animFrame * 0.05 + s.x) * 0.2})`;
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // Clouds
+    clouds.forEach(c => {
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.beginPath();
+        ctx.ellipse(c.x + c.w / 2, c.y, c.w / 2, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Ground
+    ctx.fillStyle = '#2d2d4e';
+    ctx.fillRect(0, groundY, W, H - groundY);
+    ctx.strokeStyle = 'rgba(100,100,200,0.3)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(W, groundY); ctx.stroke();
+    // Ground detail
+    ctx.fillStyle = 'rgba(100,100,200,0.1)';
+    for (let x = -(distance * 2 % 30); x < W; x += 30) {
+        ctx.fillRect(x, groundY + 5, 15, 2);
+    }
+
+    // Power-ups
+    powerUps.forEach(p => {
+        const pulse = 1 + Math.sin(p.pulse) * 0.2;
+        ctx.shadowColor = p.color; ctx.shadowBlur = 15;
+        ctx.fillStyle = p.color; ctx.globalAlpha = 0.3;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 18 * pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(p.emoji, p.x, p.y);
+    });
+
+    // Obstacles
+    obstacles.forEach(o => {
+        ctx.shadowColor = o.color; ctx.shadowBlur = 6;
+        ctx.fillStyle = o.color;
+        if (o.type === 'bird' || o.type === 'fireball') {
+            ctx.beginPath();
+            ctx.ellipse(o.x + o.w / 2, o.y + o.h / 2, o.w / 2, o.h / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            if (o.type === 'fireball') {
+                ctx.globalAlpha = 0.5;
+                ctx.beginPath(); ctx.arc(o.x + o.w / 2, o.y + o.h / 2, o.w / 2 + 5, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        } else if (o.type === 'rock') {
+            ctx.beginPath();
+            ctx.ellipse(o.x + o.w / 2, o.y + o.h / 2, o.w / 2, o.h / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Cactus style
+            roundRect(o.x, o.y, o.w, o.h, 5); ctx.fill();
+            // Spikes
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            roundRect(o.x + 3, o.y + 3, o.w - 6, o.h - 6, 3); ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+    });
+
+    // Boss
+    if (boss) {
+        ctx.shadowColor = '#f44336'; ctx.shadowBlur = 25;
+        ctx.fillStyle = boss.color;
+        roundRect(boss.x, boss.y, boss.w, boss.h, 10); ctx.fill();
+        ctx.shadowBlur = 0;
+        // Boss face
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(boss.x + 20, boss.y + 25, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(boss.x + 40, boss.y + 25, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ff1744';
+        ctx.beginPath(); ctx.arc(boss.x + 20, boss.y + 25, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(boss.x + 40, boss.y + 25, 3, 0, Math.PI * 2); ctx.fill();
+        // HP bar
+        const bw = 80, bh = 8, bx = boss.x - 10, by = boss.y - 20;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(bx, by, bw, bh);
+        ctx.fillStyle = boss.hp / boss.maxHp > 0.5 ? '#00e676' : '#ff1744';
+        ctx.fillRect(bx, by, bw * (boss.hp / boss.maxHp), bh);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('BOSS', boss.x + boss.w / 2, by - 5);
+    }
+
+    // Dino
+    drawDino();
+
+    // Particles
+    particles.forEach(p => {
+        ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+    drawHUD();
+    if (state === 'menu') drawMenu();
+    if (state === 'dead') drawDead();
+}
+
+
+
+function drawDino() {
+    const flash = dino.invincible > 0 && Math.floor(animFrame / 3) % 2;
+    if (flash) return;
+    const x = dino.x, y = dino.y, w = dino.w * (dino.tiny > 0 ? 0.7 : 1), h = dino.h;
+
+    // Shield effect
+    if (dino.shield > 0) {
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, Math.max(w, h) / 2 + 8, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(0, 229, 255, 0.1)';
+        ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, Math.max(w, h) / 2 + 8, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Body
+    ctx.shadowColor = '#00e676'; ctx.shadowBlur = 12;
+    ctx.fillStyle = dino.tiny > 0 ? '#e040fb' : '#00e676';
+    roundRect(x, y, w, h, 8); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Belly
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    roundRect(x + w * 0.2, y + h * 0.4, w * 0.5, h * 0.5, 5); ctx.fill();
+
+    // Eye
+    const eyeX = x + w * 0.7, eyeY = y + h * 0.25;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(eyeX, eyeY, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(eyeX + 1.5, eyeY, 3, 0, Math.PI * 2); ctx.fill();
+
+    // Legs (running animation)
+    if (!dino.jumping) {
+        const legOffset = Math.sin(dino.runFrame * 4) * 5;
+        ctx.fillStyle = dino.tiny > 0 ? '#ba68c8' : '#00c853';
+        ctx.fillRect(x + 8, y + h, 8, 8 + legOffset);
+        ctx.fillRect(x + w - 16, y + h, 8, 8 - legOffset);
+    }
+
+    // Tail
+    ctx.fillStyle = dino.tiny > 0 ? '#ba68c8' : '#00c853';
+    ctx.beginPath();
+    ctx.moveTo(x, y + h * 0.5);
+    ctx.lineTo(x - 15, y + h * 0.4 + Math.sin(animFrame * 0.1) * 3);
+    ctx.lineTo(x, y + h * 0.7);
+    ctx.fill();
+
+    // Dust trail when running
+    if (!dino.jumping && animFrame % 8 === 0) {
+        spawnParticles(x + w / 2, groundY, '#555', 1);
+    }
+}
+
+function drawHUD() {
+    // Score
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(W / 2 - 70, 10, 140, 35, 10); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Skor: ' + score, W / 2, 28);
+
+    // High score
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(W - 150, 10, 140, 30, 10); ctx.fill();
+    ctx.fillStyle = '#ffd600'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText('Best: ' + highScore, W - 20, 26);
+
+    // Speed indicator
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(10, 10, 100, 30, 10); ctx.fill();
+    ctx.fillStyle = '#00e5ff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('Speed: x' + (speed / BASE_SPEED).toFixed(1), 20, 26);
+
+    // Active power-ups
+    let py = 50;
+    if (dino.shield > 0) { ctx.fillStyle = '#00e5ff'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('🛡 ' + Math.ceil(dino.shield / 60) + 's', 15, py); py += 18; }
+    if (dino.magnet > 0) { ctx.fillStyle = '#ffd600'; ctx.fillText('🧲 ' + Math.ceil(dino.magnet / 60) + 's', 15, py); py += 18; }
+    if (dino.tiny > 0) { ctx.fillStyle = '#e040fb'; ctx.fillText('🔮 ' + Math.ceil(dino.tiny / 60) + 's', 15, py); py += 18; }
+    if (dino.slow > 0) { ctx.fillStyle = '#76ff03'; ctx.fillText('⏳ ' + Math.ceil(dino.slow / 60) + 's', 15, py); py += 18; }
+
+    // Combo
+    if (combo >= 3) {
+        ctx.fillStyle = '#ffd600'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('COMBO x' + combo + '!', W / 2, 65);
+    }
+}
+
+
+
+function drawMenu() {
+    ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#00e676'; ctx.font = 'bold 46px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#00e676'; ctx.shadowBlur = 20;
+    ctx.fillText('DINO RUN!', W / 2, H / 2 - 100);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#aaa'; ctx.font = '16px sans-serif';
+    ctx.fillText('Lari terus! Hindarin rintangan!', W / 2, H / 2 - 55);
+    // Start btn
+    ctx.shadowColor = '#00e676'; ctx.shadowBlur = 15; ctx.fillStyle = '#00e676';
+    roundRect(W / 2 - 100, H / 2 - 15, 200, 55, 28); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#000'; ctx.font = 'bold 22px sans-serif';
+    ctx.fillText('MAIN!', W / 2, H / 2 + 12);
+    ctx.fillStyle = '#555'; ctx.font = '13px sans-serif';
+    ctx.fillText('Tap/Space = Lompat | Swipe bawah = Merunduk', W / 2, H / 2 + 65);
+    ctx.fillText('Double tap = Double jump!', W / 2, H / 2 + 85);
+    if (highScore > 0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 14px sans-serif'; ctx.fillText('Best: ' + highScore, W / 2, H / 2 + 120); }
+}
+
+function drawDead() {
+    ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ff1744'; ctx.font = 'bold 40px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('GAME OVER', W / 2, H / 2 - 80);
+    ctx.fillStyle = '#fff'; ctx.font = '22px sans-serif';
+    ctx.fillText('Skor: ' + score, W / 2, H / 2 - 35);
+    if (score >= highScore && score > 0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 16px sans-serif'; ctx.fillText('REKOR BARU!', W / 2, H / 2 - 5); }
+    ctx.shadowColor = '#00e676'; ctx.shadowBlur = 15; ctx.fillStyle = '#00e676';
+    roundRect(W / 2 - 100, H / 2 + 20, 200, 55, 28); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#000'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('MAIN LAGI', W / 2, H / 2 + 48);
+}
+
+function roundRect(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+
+
+
+// ===== INPUT =====
+document.addEventListener('keydown', e => {
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.key === 'w' || e.key === 'W') { jump(); e.preventDefault(); }
+    if (e.code === 'ArrowDown' || e.key === 's' || e.key === 'S') { duck(true); e.preventDefault(); }
+});
+document.addEventListener('keyup', e => {
+    if (e.code === 'ArrowDown' || e.key === 's' || e.key === 'S') duck(false);
+});
+
+// Touch
+let touchStartY = 0;
+canvas.addEventListener('touchstart', e => {
+    touchStartY = e.touches[0].clientY;
+    const tx = e.touches[0].clientX, ty = e.touches[0].clientY;
+    if (state === 'menu') { const by = H / 2 - 15; if (tx > W / 2 - 100 && tx < W / 2 + 100 && ty > by && ty < by + 55) initGame(); else jump(); }
+    else if (state === 'dead') { const by = H / 2 + 20; if (tx > W / 2 - 100 && tx < W / 2 + 100 && ty > by && ty < by + 55) initGame(); else jump(); }
+    else { jump(); }
+    e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    const dy = e.touches[0].clientY - touchStartY;
+    if (dy > 30) duck(true);
+    e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+    duck(false);
+    e.preventDefault();
+}, { passive: false });
+
+// Mouse click
+canvas.addEventListener('click', e => {
+    if (state === 'menu') { const by = H / 2 - 15; if (e.clientX > W / 2 - 100 && e.clientX < W / 2 + 100 && e.clientY > by && e.clientY < by + 55) initGame(); else jump(); }
+    else if (state === 'dead') { const by = H / 2 + 20; if (e.clientX > W / 2 - 100 && e.clientX < W / 2 + 100 && e.clientY > by && e.clientY < by + 55) initGame(); else jump(); }
+    else jump();
+});
+
+// ===== GAME LOOP =====
+function gameLoop() {
+    requestAnimationFrame(gameLoop);
+    if (state === 'playing') update();
+    else draw();
+}
+
+// Start
+state = 'menu';
+groundY = H - GROUND_OFFSET;
+dino = { x: 80, y: groundY - 50, vy: 0, w: 40, h: 50, jumping: false, doubleJumped: false, ducking: false, shield: 0, magnet: 0, tiny: 0, slow: 0, invincible: 0, runFrame: 0 };
+obstacles = []; powerUps = []; particles = []; clouds = []; stars = [];
+score = 0; speed = BASE_SPEED; distance = 0;
+for (let i = 0; i < 15; i++) stars.push({ x: Math.random() * W, y: Math.random() * (groundY - 100), size: Math.random() * 2 + 1, speed: Math.random() * 0.3 + 0.1 });
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
