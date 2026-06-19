@@ -67,7 +67,7 @@ let obstacles = [];
 let numPlayers = 2;
 let gameTime = 0;
 let winScore = 10;
-let keys = {};
+let pressedKeys = {};
 
 // ===== OBSTACLES =====
 function generateObstacles() {
@@ -188,10 +188,10 @@ function update() {
 
         // Movement
         let mx = 0, my = 0;
-        if (keys[p.keys.up]) my = -1;
-        if (keys[p.keys.down]) my = 1;
-        if (keys[p.keys.left]) mx = -1;
-        if (keys[p.keys.right]) mx = 1;
+        if (pressedKeys[p.keys.up]) my = -1;
+        if (pressedKeys[p.keys.down]) my = 1;
+        if (pressedKeys[p.keys.left]) mx = -1;
+        if (pressedKeys[p.keys.right]) mx = 1;
 
         if (mx || my) {
             const len = Math.sqrt(mx * mx + my * my);
@@ -215,7 +215,7 @@ function update() {
         if (!blocked) { p.x = clampX; p.y = clampY; }
 
         // Shoot
-        if (keys[p.keys.shoot]) shoot(p);
+        if (pressedKeys[p.keys.shoot]) shoot(p);
     });
 
     // Update bullets
@@ -534,12 +534,12 @@ function roundRect(x, y, w, h, r) {
 
 // ===== INPUT =====
 document.addEventListener('keydown', (e) => {
-    keys[e.key] = true;
+    pressedKeys[e.key] = true;
     if (state === 'menu' && e.key === 'Enter') initGame();
     e.preventDefault();
 });
 document.addEventListener('keyup', (e) => {
-    keys[e.key] = false;
+    pressedKeys[e.key] = false;
 });
 
 // Click handling for menu
