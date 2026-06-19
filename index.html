@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Games - by igustiawan</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Comic Sans MS', cursive;
+            padding: 20px;
+        }
+        h1 {
+            color: #fff;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 10px rgba(102, 126, 234, 0.5);
+        }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
+        }
+        .game-card {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            text-decoration: none;
+            display: block;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+        .game-card .emoji { font-size: 4em; margin-bottom: 15px; }
+        .game-card h2 { color: #fff; font-size: 1.5em; margin-bottom: 10px; }
+        .game-card p { color: rgba(255,255,255,0.6); font-size: 1em; }
+    </style>
+</head>
+<body>
+    <h1>Game Seru!</h1>
+    <div class="games-grid">
+        <a href="snake-game/" class="game-card">
+            <div class="emoji">🐍</div>
+            <h2>Ular Lapar!</h2>
+            <p>Makan makanan biar ularnya makin gede!</p>
+        </a>
+    </div>
+</body>
+</html>
