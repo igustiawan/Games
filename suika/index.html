@@ -23,10 +23,10 @@ resize(); window.addEventListener('resize', resize);
 document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
 // ===== CONFIG =====
-const GRAVITY = 0.35;
-const BOUNCE = 0.4;
-const FRICTION = 0.99;
-const WALL_BOUNCE = 0.3;
+const GRAVITY = 0.2;
+const BOUNCE = 0.3;
+const FRICTION = 0.98;
+const WALL_BOUNCE = 0.2;
 
 // Fruit evolution chain (small → big)
 const FRUITS = [
@@ -88,8 +88,6 @@ function updatePhysics() {
     const right = containerX + containerW;
 
     fruits.forEach(f => {
-        if (f.settled && f.vy === 0 && f.vx === 0) return;
-
         // Gravity
         f.vy += GRAVITY;
         f.vx *= FRICTION;
@@ -100,47 +98,50 @@ function updatePhysics() {
         if (f.y + f.radius > bottom) {
             f.y = bottom - f.radius;
             f.vy *= -BOUNCE;
-            if (Math.abs(f.vy) < 0.5) { f.vy = 0; f.settled = true; }
+            f.vx *= 0.9;
+            if (Math.abs(f.vy) < 0.3) f.vy = 0;
         }
         // Walls
         if (f.x - f.radius < left) {
             f.x = left + f.radius;
-            f.vx *= -WALL_BOUNCE;
+            f.vx = Math.abs(f.vx) * WALL_BOUNCE;
         }
         if (f.x + f.radius > right) {
             f.x = right - f.radius;
-            f.vx *= -WALL_BOUNCE;
+            f.vx = -Math.abs(f.vx) * WALL_BOUNCE;
         }
 
         if (f.flash > 0) f.flash--;
     });
 
-    // Fruit-to-fruit collision
-    for (let i = 0; i < fruits.length; i++) {
-        for (let j = i + 1; j < fruits.length; j++) {
-            const a = fruits[i], b = fruits[j];
-            const dx = b.x - a.x, dy = b.y - a.y;
-            const dist = Math.hypot(dx, dy);
-            const minDist = a.radius + b.radius;
+    // Fruit-to-fruit collision (multiple passes for stability)
+    for (let pass = 0; pass < 3; pass++) {
+        for (let i = 0; i < fruits.length; i++) {
+            for (let j = i + 1; j < fruits.length; j++) {
+                const a = fruits[i], b = fruits[j];
+                const dx = b.x - a.x, dy = b.y - a.y;
+                const dist = Math.hypot(dx, dy);
+                const minDist = a.radius + b.radius;
 
-            if (dist < minDist && dist > 0) {
-                // Separate
-                const overlap = (minDist - dist) / 2;
-                const nx = dx / dist, ny = dy / dist;
-                a.x -= nx * overlap;
-                a.y -= ny * overlap;
-                b.x += nx * overlap;
-                b.y += ny * overlap;
+                if (dist < minDist && dist > 0.1) {
+                    // Separate
+                    const overlap = (minDist - dist) / 2;
+                    const nx = dx / dist, ny = dy / dist;
+                    a.x -= nx * overlap;
+                    a.y -= ny * overlap;
+                    b.x += nx * overlap;
+                    b.y += ny * overlap;
 
-                // Bounce
-                const relVx = a.vx - b.vx, relVy = a.vy - b.vy;
-                const dot = relVx * nx + relVy * ny;
-                if (dot > 0) {
-                    const impulse = dot * 0.5;
-                    a.vx -= impulse * nx;
-                    a.vy -= impulse * ny;
-                    b.vx += impulse * nx;
-                    b.vy += impulse * ny;
+                    // Bounce (softer)
+                    const relVx = a.vx - b.vx, relVy = a.vy - b.vy;
+                    const dot = relVx * nx + relVy * ny;
+                    if (dot > 0) {
+                        const impulse = dot * 0.3;
+                        a.vx -= impulse * nx;
+                        a.vy -= impulse * ny;
+                        b.vx += impulse * nx;
+                        b.vy += impulse * ny;
+                    }
                 }
             }
         }
@@ -152,15 +153,17 @@ function checkMerge() {
         for (let j = i + 1; j < fruits.length; j++) {
             const a = fruits[i], b = fruits[j];
             if (a.level !== b.level) continue;
-            if (a.level >= FRUITS.length - 1) continue; // Max level
+            if (a.level >= FRUITS.length - 1) continue;
 
             const dist = Math.hypot(b.x - a.x, b.y - a.y);
-            if (dist < a.radius + b.radius * 0.8) {
+            const mergeThreshold = a.radius + b.radius;
+
+            if (dist < mergeThreshold) {
                 // MERGE!
                 const newLevel = a.level + 1;
                 const mx = (a.x + b.x) / 2;
                 const my = (a.y + b.y) / 2;
-                const newFruit = createFruit(newLevel, mx, my, 0, -2);
+                const newFruit = createFruit(newLevel, mx, my, 0, -1);
                 newFruit.flash = 15;
 
                 // Remove old, add new
@@ -175,7 +178,7 @@ function checkMerge() {
                 mergeFlash.push({ x: mx, y: my, radius: FRUITS[newLevel].radius, life: 1 });
 
                 if (navigator.vibrate) navigator.vibrate(30);
-                return true; // Only one merge per frame
+                return true;
             }
         }
     }
@@ -183,12 +186,11 @@ function checkMerge() {
 }
 
 function checkGameOver() {
-    // If any fruit is above the line for too long
     const line = containerY + 50;
-    const above = fruits.some(f => f.y - f.radius < line && f.settled);
+    const above = fruits.some(f => f.y - f.radius < line && Math.abs(f.vy) < 0.5);
     if (above) {
         gameOverTimer++;
-        if (gameOverTimer > 60) { // 1 second grace
+        if (gameOverTimer > 120) { // 2 seconds grace
             state = 'dead';
             if (score > highScore) { highScore = score; localStorage.setItem('suikaHS', highScore); }
             if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
