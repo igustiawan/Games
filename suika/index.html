@@ -21,11 +21,6 @@ let W, H;
 function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
 resize(); window.addEventListener('resize', resize);
 document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-</script>
-</body>
-</html>
-
-
 
 // ===== CONFIG =====
 const GRAVITY = 0.35;
