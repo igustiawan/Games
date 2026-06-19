@@ -33,24 +33,23 @@ const TURN_SPEED = 0.06;
 const AI_TURN_SPEED = 0.04;
 
 // Colors
-const SNAKE_COLORS = [
-    ['#00e676','#00c853','#00e676'],
-    ['#ff5252','#ff1744','#ff5252'],
-    ['#40c4ff','#0091ea','#40c4ff'],
-    ['#ffeb3b','#ffd600','#ffeb3b'],
-    ['#e040fb','#d500f9','#e040fb'],
-    ['#ff6e40','#ff3d00','#ff6e40'],
-    ['#69f0ae','#00e676','#69f0ae'],
-    ['#ea80fc','#aa00ff','#ea80fc'],
-    ['#ffd740','#ffc400','#ffd740'],
-    ['#80deea','#00acc1','#80deea'],
-    ['#f48fb1','#ec407a','#f48fb1'],
+const SKINS = [
+    { id: 'dragon', name: 'Naga Api', colors: ['#ff5722','#ff3d00','#dd2c00'], type: 'dragon', headShape: 'horns', bodyPattern: 'scales', glowColor: '#ff5722', eyeColor: '#ffd600' },
+    { id: 'ice', name: 'Naga Es', colors: ['#00bcd4','#0097a7','#00838f'], type: 'dragon', headShape: 'horns', bodyPattern: 'crystals', glowColor: '#00e5ff', eyeColor: '#80deea' },
+    { id: 'shadow', name: 'Naga Bayangan', colors: ['#9c27b0','#7b1fa2','#4a148c'], type: 'dragon', headShape: 'horns', bodyPattern: 'smoke', glowColor: '#e040fb', eyeColor: '#ea80fc' },
+    { id: 'gold', name: 'Naga Emas', colors: ['#ffd600','#ffab00','#ff6f00'], type: 'dragon', headShape: 'crown', bodyPattern: 'scales', glowColor: '#ffd600', eyeColor: '#fff' },
+    { id: 'viper', name: 'Ular Viper', colors: ['#00e676','#00c853','#1b5e20'], type: 'viper', headShape: 'viper', bodyPattern: 'stripes', glowColor: '#00e676', eyeColor: '#ffeb3b' },
+    { id: 'cobra', name: 'King Cobra', colors: ['#ff1744','#d50000','#b71c1c'], type: 'cobra', headShape: 'hood', bodyPattern: 'diamond', glowColor: '#ff1744', eyeColor: '#fff' },
+    { id: 'electric', name: 'Listrik', colors: ['#ffeb3b','#ffc107','#fff176'], type: 'electric', headShape: 'bolt', bodyPattern: 'electric', glowColor: '#ffeb3b', eyeColor: '#fff' },
+    { id: 'galaxy', name: 'Galaxy', colors: ['#ea80fc','#aa00ff','#6200ea'], type: 'galaxy', headShape: 'cosmic', bodyPattern: 'stars', glowColor: '#ea80fc', eyeColor: '#fff' },
+    { id: 'toxic', name: 'Toxic', colors: ['#76ff03','#64dd17','#aeea00'], type: 'toxic', headShape: 'fangs', bodyPattern: 'bubbles', glowColor: '#76ff03', eyeColor: '#ff1744' },
+    { id: 'lava', name: 'Lava', colors: ['#ff6d00','#ff3d00','#dd2c00'], type: 'lava', headShape: 'rock', bodyPattern: 'lava', glowColor: '#ff6d00', eyeColor: '#ffd600' },
+    { id: 'ghost', name: 'Hantu', colors: ['#b0bec5','#78909c','#546e7a'], type: 'ghost', headShape: 'ghost', bodyPattern: 'fade', glowColor: '#b0bec5', eyeColor: '#f44336' },
 ];
 
-const SKIN_NAMES = [
-    'Hijau Neon', 'Merah Api', 'Biru Langit', 'Kuning Emas', 'Ungu Magic',
-    'Oranye Sunset', 'Tosca Fresh', 'Pink Galaxy', 'Gold Mewah', 'Biru Laut', 'Rose Cantik'
-];
+// For backward compat
+const SNAKE_COLORS = SKINS.map(s => s.colors);
+const SKIN_NAMES = SKINS.map(s => s.name);
 
 let selectedSkin = parseInt(localStorage.getItem('snakeSkin') || '0');
 
@@ -67,7 +66,7 @@ let killCount = 0;
 highScore = parseInt(localStorage.getItem('snakeArenaHS') || '0');
 
 // ===== SNAKE CLASS =====
-function createSnake(x, y, length, colorSet, isPlayer) {
+function createSnake(x, y, length, colorSet, isPlayer, skinIdx) {
     const segments = [];
     for (let i = 0; i < length; i++) {
         segments.push({ x: x - i * SEG_DIST, y: y });
@@ -77,6 +76,7 @@ function createSnake(x, y, length, colorSet, isPlayer) {
         speed: BASE_SPEED, colors: colorSet,
         alive: true, isPlayer,
         length, boosting: false,
+        skinIdx: skinIdx !== undefined ? skinIdx : Math.floor(Math.random() * SKINS.length),
         name: isPlayer ? 'Kamu' : 'Bot ' + Math.floor(Math.random() * 99),
     };
 }
@@ -325,8 +325,8 @@ function respawnAI(snake) {
     const x = Math.random() * MAP_W;
     const y = Math.random() * MAP_H;
     const len = 15 + Math.floor(Math.random() * 30);
-    const colors = SNAKE_COLORS[Math.floor(Math.random() * SNAKE_COLORS.length)];
-    const newSnake = createSnake(x, y, len, colors, false);
+    const si = Math.floor(Math.random() * SKINS.length);
+    const newSnake = createSnake(x, y, len, SNAKE_COLORS[si], false, si);
     newSnake.name = snake.name;
     const idx = aiSnakes.indexOf(snake);
     if (idx >= 0) aiSnakes[idx] = newSnake;
@@ -336,14 +336,14 @@ function respawnAI(snake) {
 
 // ===== INIT =====
 function initGame() {
-    player = createSnake(MAP_W / 2, MAP_H / 2, 20, SNAKE_COLORS[selectedSkin], true);
+    player = createSnake(MAP_W / 2, MAP_H / 2, 20, SNAKE_COLORS[selectedSkin], true, selectedSkin);
     aiSnakes = [];
     for (let i = 0; i < AI_COUNT; i++) {
         const x = Math.random() * MAP_W;
         const y = Math.random() * MAP_H;
         const len = 15 + Math.floor(Math.random() * 40);
-        const colors = SNAKE_COLORS[(i + 1) % SNAKE_COLORS.length];
-        aiSnakes.push(createSnake(x, y, len, colors, false));
+        const si = (i + 1) % SKINS.length;
+        aiSnakes.push(createSnake(x, y, len, SNAKE_COLORS[si], false, si));
     }
     foods = [];
     for (let i = 0; i < FOOD_COUNT; i++) foods.push(spawnFood());
@@ -468,6 +468,7 @@ function drawSnake(snake) {
     const segs = snake.segments;
     const segR = getSegRadius(snake);
     const headR = getHeadRadius(snake);
+    const skin = SKINS[snake.skinIdx] || SKINS[0];
 
     // Draw from tail to head
     for (let i = segs.length - 1; i >= 0; i--) {
@@ -476,23 +477,167 @@ function drawSnake(snake) {
         const r = i === 0 ? headR : segR * (0.7 + t * 0.3);
         const colorIdx = Math.floor(i / 4) % snake.colors.length;
 
-        if (i === 0) { ctx.shadowColor = snake.colors[0]; ctx.shadowBlur = 15; }
+        if (i === 0) { ctx.shadowColor = skin.glowColor; ctx.shadowBlur = 18; }
         else { ctx.shadowBlur = 0; }
 
         ctx.globalAlpha = 0.9 + t * 0.1;
         ctx.fillStyle = snake.colors[colorIdx];
         ctx.beginPath(); ctx.arc(seg.x, seg.y, r, 0, Math.PI * 2); ctx.fill();
+
+        // Body patterns
+        if (i > 0 && i % 3 === 0) {
+            ctx.globalAlpha = 0.4;
+            if (skin.bodyPattern === 'scales') {
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.arc(seg.x, seg.y, r * 0.6, 0, Math.PI); ctx.stroke();
+            } else if (skin.bodyPattern === 'stripes') {
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fillRect(seg.x - r, seg.y - 2, r * 2, 4);
+            } else if (skin.bodyPattern === 'diamond') {
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.beginPath(); ctx.moveTo(seg.x, seg.y - r * 0.5); ctx.lineTo(seg.x + r * 0.4, seg.y); ctx.lineTo(seg.x, seg.y + r * 0.5); ctx.lineTo(seg.x - r * 0.4, seg.y); ctx.fill();
+            } else if (skin.bodyPattern === 'crystals') {
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.beginPath(); ctx.moveTo(seg.x, seg.y - r * 0.6); ctx.lineTo(seg.x + r * 0.3, seg.y); ctx.lineTo(seg.x - r * 0.3, seg.y); ctx.fill();
+            } else if (skin.bodyPattern === 'electric') {
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(seg.x - r, seg.y); ctx.lineTo(seg.x - r*0.3, seg.y - r*0.4); ctx.lineTo(seg.x + r*0.3, seg.y + r*0.4); ctx.lineTo(seg.x + r, seg.y); ctx.stroke();
+            } else if (skin.bodyPattern === 'stars') {
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.beginPath(); ctx.arc(seg.x + (Math.sin(i)*r*0.3), seg.y + (Math.cos(i)*r*0.3), 1.5, 0, Math.PI * 2); ctx.fill();
+            } else if (skin.bodyPattern === 'bubbles') {
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.beginPath(); ctx.arc(seg.x + Math.sin(i*2)*r*0.4, seg.y + Math.cos(i*2)*r*0.4, r * 0.2, 0, Math.PI * 2); ctx.fill();
+            } else if (skin.bodyPattern === 'lava') {
+                ctx.fillStyle = 'rgba(255,200,0,0.4)';
+                ctx.beginPath(); ctx.arc(seg.x, seg.y, r * 0.4, 0, Math.PI * 2); ctx.fill();
+            } else if (skin.bodyPattern === 'fade') {
+                ctx.globalAlpha = 0.15 + t * 0.3;
+            } else if (skin.bodyPattern === 'smoke') {
+                ctx.fillStyle = 'rgba(200,100,255,0.2)';
+                ctx.beginPath(); ctx.arc(seg.x + Math.sin(animFrame*0.05+i)*5, seg.y + Math.cos(animFrame*0.05+i)*5, r * 0.8, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
     }
     ctx.shadowBlur = 0; ctx.globalAlpha = 1;
 
-    // Eyes on head
+    // HEAD DECORATIONS based on skin type
     const head = segs[0];
+    const a = snake.angle;
+
+    // Dragon horns
+    if (skin.headShape === 'horns' || skin.headShape === 'crown') {
+        ctx.fillStyle = skin.headShape === 'crown' ? '#ffd600' : snake.colors[0];
+        const hornLen = headR * 0.8;
+        // Left horn
+        ctx.beginPath();
+        ctx.moveTo(head.x + Math.cos(a - 0.8) * headR * 0.6, head.y + Math.sin(a - 0.8) * headR * 0.6);
+        ctx.lineTo(head.x + Math.cos(a - 0.4) * (headR + hornLen), head.y + Math.sin(a - 0.4) * (headR + hornLen));
+        ctx.lineTo(head.x + Math.cos(a - 0.2) * headR * 0.8, head.y + Math.sin(a - 0.2) * headR * 0.8);
+        ctx.fill();
+        // Right horn
+        ctx.beginPath();
+        ctx.moveTo(head.x + Math.cos(a + 0.8) * headR * 0.6, head.y + Math.sin(a + 0.8) * headR * 0.6);
+        ctx.lineTo(head.x + Math.cos(a + 0.4) * (headR + hornLen), head.y + Math.sin(a + 0.4) * (headR + hornLen));
+        ctx.lineTo(head.x + Math.cos(a + 0.2) * headR * 0.8, head.y + Math.sin(a + 0.2) * headR * 0.8);
+        ctx.fill();
+        if (skin.headShape === 'crown') {
+            // Middle crown spike
+            ctx.beginPath();
+            ctx.moveTo(head.x + Math.cos(a) * headR * 0.7, head.y + Math.sin(a) * headR * 0.7);
+            ctx.lineTo(head.x + Math.cos(a) * (headR + hornLen * 1.2), head.y + Math.sin(a) * (headR + hornLen * 1.2));
+            ctx.lineTo(head.x + Math.cos(a + 0.15) * headR * 0.8, head.y + Math.sin(a + 0.15) * headR * 0.8);
+            ctx.fill();
+        }
+    }
+
+    // Cobra hood
+    if (skin.headShape === 'hood') {
+        ctx.fillStyle = snake.colors[1];
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.ellipse(head.x - Math.cos(a) * 3, head.y - Math.sin(a) * 3, headR * 1.6, headR * 1.2, a, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        // Hood pattern
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.beginPath(); ctx.arc(head.x - Math.cos(a)*4, head.y - Math.sin(a)*4, headR * 0.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Viper head (triangular)
+    if (skin.headShape === 'viper') {
+        ctx.fillStyle = snake.colors[0];
+        ctx.beginPath();
+        ctx.moveTo(head.x + Math.cos(a) * headR * 1.4, head.y + Math.sin(a) * headR * 1.4);
+        ctx.lineTo(head.x + Math.cos(a - 1.2) * headR, head.y + Math.sin(a - 1.2) * headR);
+        ctx.lineTo(head.x + Math.cos(a + 1.2) * headR, head.y + Math.sin(a + 1.2) * headR);
+        ctx.fill();
+    }
+
+    // Bolt (electric)
+    if (skin.headShape === 'bolt') {
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = '#ffeb3b'; ctx.lineWidth = 2;
+        const boltLen = headR * 1.2;
+        ctx.beginPath();
+        ctx.moveTo(head.x + Math.cos(a) * boltLen, head.y + Math.sin(a) * boltLen);
+        ctx.lineTo(head.x + Math.cos(a + 0.5) * boltLen * 0.5, head.y + Math.sin(a + 0.5) * boltLen * 0.5);
+        ctx.lineTo(head.x + Math.cos(a) * boltLen * 0.7, head.y + Math.sin(a) * boltLen * 0.7);
+        ctx.stroke();
+    }
+
+    // Ghost (wavy tail-like head)
+    if (skin.headShape === 'ghost') {
+        ctx.globalAlpha = 0.5 + Math.sin(animFrame * 0.1) * 0.2;
+        ctx.fillStyle = snake.colors[0];
+        ctx.beginPath(); ctx.arc(head.x, head.y, headR * 1.3, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+
+    // Rock (lava cracks)
+    if (skin.headShape === 'rock') {
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.arc(head.x, head.y, headR * 0.9, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#ffd600'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(head.x - headR * 0.3, head.y); ctx.lineTo(head.x + headR * 0.3, head.y + headR * 0.2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(head.x, head.y - headR * 0.4); ctx.lineTo(head.x + headR * 0.2, head.y + headR * 0.3); ctx.stroke();
+    }
+
+    // Cosmic ring
+    if (skin.headShape === 'cosmic') {
+        ctx.strokeStyle = 'rgba(234,128,252,0.5)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(head.x, head.y, headR * 1.5, headR * 0.5, a + animFrame * 0.03, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // Fangs (toxic)
+    if (skin.headShape === 'fangs') {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(head.x + Math.cos(a - 0.3) * headR, head.y + Math.sin(a - 0.3) * headR);
+        ctx.lineTo(head.x + Math.cos(a - 0.15) * (headR + 8), head.y + Math.sin(a - 0.15) * (headR + 8));
+        ctx.lineTo(head.x + Math.cos(a) * headR, head.y + Math.sin(a) * headR);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(head.x + Math.cos(a + 0.3) * headR, head.y + Math.sin(a + 0.3) * headR);
+        ctx.lineTo(head.x + Math.cos(a + 0.15) * (headR + 8), head.y + Math.sin(a + 0.15) * (headR + 8));
+        ctx.lineTo(head.x + Math.cos(a) * headR, head.y + Math.sin(a) * headR);
+        ctx.fill();
+    }
+
+    // Eyes
     const eyeOff = headR * 0.4;
-    const eyeAngle1 = snake.angle - 0.5;
-    const eyeAngle2 = snake.angle + 0.5;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(head.x + Math.cos(eyeAngle1) * eyeOff, head.y + Math.sin(eyeAngle1) * eyeOff, headR * 0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(head.x + Math.cos(eyeAngle2) * eyeOff, head.y + Math.sin(eyeAngle2) * eyeOff, headR * 0.3, 0, Math.PI * 2); ctx.fill();
+    const eyeAngle1 = a - 0.5;
+    const eyeAngle2 = a + 0.5;
+    ctx.fillStyle = skin.eyeColor;
+    ctx.beginPath(); ctx.arc(head.x + Math.cos(eyeAngle1) * eyeOff, head.y + Math.sin(eyeAngle1) * eyeOff, headR * 0.28, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(head.x + Math.cos(eyeAngle2) * eyeOff, head.y + Math.sin(eyeAngle2) * eyeOff, headR * 0.28, 0, Math.PI * 2); ctx.fill();
+    // Pupils (slit for dragon/viper, round for others)
+    ctx.fillStyle = '#111';
+    const pupilW = (skin.type === 'dragon' || skin.type === 'viper' || skin.type === 'cobra') ? headR * 0.08 : headR * 0.14;
+    const pupilH = headR * 0.18;
+    ctx.beginPath(); ctx.ellipse(head.x + Math.cos(eyeAngle1) * eyeOff + Math.cos(a)*2, head.y + Math.sin(eyeAngle1) * eyeOff + Math.sin(a)*2, pupilW, pupilH, a, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(head.x + Math.cos(eyeAngle2) * eyeOff + Math.cos(a)*2, head.y + Math.sin(eyeAngle2) * eyeOff + Math.sin(a)*2, pupilW, pupilH, a, 0, Math.PI*2); ctx.fill();
     // Pupils
     ctx.fillStyle = '#111';
     ctx.beginPath(); ctx.arc(head.x + Math.cos(eyeAngle1) * eyeOff + Math.cos(snake.angle) * 2, head.y + Math.sin(eyeAngle1) * eyeOff + Math.sin(snake.angle) * 2, headR * 0.15, 0, Math.PI * 2); ctx.fill();
@@ -604,60 +749,76 @@ function drawMenu() {
 }
 
 function drawSkinSelect() {
-    ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#e040fb'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('PILIH SKIN', W / 2, 60);
+    ctx.fillStyle = 'rgba(0,0,0,0.92)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#e040fb'; ctx.font = 'bold 32px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('PILIH SKIN', W / 2, 50);
 
     // Grid of skins
-    const cols = Math.min(4, Math.floor((W - 40) / 140));
-    const rows = Math.ceil(SNAKE_COLORS.length / cols);
-    const cellW = 130, cellH = 90;
+    const cols = Math.min(4, Math.floor((W - 30) / 150));
+    const rows = Math.ceil(SKINS.length / cols);
+    const cellW = 140, cellH = 100;
     const startX = W / 2 - (cols * cellW) / 2;
-    const startY = 110;
+    const startY = 90;
 
-    SNAKE_COLORS.forEach((colors, i) => {
+    SKINS.forEach((skin, i) => {
         const col = i % cols;
         const row = Math.floor(i / cols);
         const cx = startX + col * cellW + cellW / 2;
-        const cy = startY + row * (cellH + 10) + cellH / 2;
+        const cy = startY + row * (cellH + 8) + cellH / 2;
 
-        // Card bg
         const isSelected = i === selectedSkin;
-        ctx.fillStyle = isSelected ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)';
-        ctx.strokeStyle = isSelected ? colors[0] : 'rgba(255,255,255,0.1)';
+        ctx.fillStyle = isSelected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)';
+        ctx.strokeStyle = isSelected ? skin.glowColor : 'rgba(255,255,255,0.1)';
         ctx.lineWidth = isSelected ? 3 : 1;
-        roundRect(cx - cellW / 2 + 5, cy - cellH / 2, cellW - 10, cellH, 12);
-        ctx.fill(); ctx.stroke();
+        if (isSelected) { ctx.shadowColor = skin.glowColor; ctx.shadowBlur = 12; }
+        roundRect(cx - cellW / 2 + 5, cy - cellH / 2, cellW - 10, cellH, 14);
+        ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
 
-        // Snake preview (5 circles)
-        for (let j = 4; j >= 0; j--) {
-            const sx = cx - 20 + j * 10;
+        // Snake body preview
+        for (let j = 5; j >= 0; j--) {
+            const sx = cx - 25 + j * 10;
             const sy = cy - 8;
             const r = j === 0 ? 10 : 7;
-            ctx.fillStyle = colors[j % colors.length];
-            if (j === 0) { ctx.shadowColor = colors[0]; ctx.shadowBlur = 10; }
+            ctx.fillStyle = skin.colors[j % skin.colors.length];
+            if (j === 0) { ctx.shadowColor = skin.glowColor; ctx.shadowBlur = 10; }
             ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
         }
-        // Eyes on head
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(cx - 20 + 3, cy - 12, 3, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(cx - 20 + 3, cy - 4, 3, 0, Math.PI * 2); ctx.fill();
+
+        // Head decoration preview
+        const hx = cx - 25, hy = cy - 8;
+        if (skin.headShape === 'horns' || skin.headShape === 'crown') {
+            ctx.fillStyle = skin.headShape === 'crown' ? '#ffd600' : skin.colors[0];
+            ctx.beginPath(); ctx.moveTo(hx - 5, hy - 10); ctx.lineTo(hx - 2, hy - 18); ctx.lineTo(hx + 1, hy - 10); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(hx + 5, hy - 10); ctx.lineTo(hx + 8, hy - 18); ctx.lineTo(hx + 11, hy - 10); ctx.fill();
+        } else if (skin.headShape === 'hood') {
+            ctx.fillStyle = skin.colors[1]; ctx.globalAlpha = 0.5;
+            ctx.beginPath(); ctx.ellipse(hx, hy, 16, 12, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 1;
+        } else if (skin.headShape === 'fangs') {
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.moveTo(hx + 10, hy + 3); ctx.lineTo(hx + 13, hy + 12); ctx.lineTo(hx + 8, hy + 5); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(hx + 10, hy - 3); ctx.lineTo(hx + 13, hy - 12); ctx.lineTo(hx + 8, hy - 5); ctx.fill();
+        }
+
+        // Eyes
+        ctx.fillStyle = skin.eyeColor;
+        ctx.beginPath(); ctx.arc(hx + 3, hy - 4, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(hx + 3, hy + 4, 3, 0, Math.PI * 2); ctx.fill();
 
         // Name
-        ctx.fillStyle = '#aaa'; ctx.font = '11px sans-serif';
-        ctx.fillText(SKIN_NAMES[i], cx, cy + 30);
+        ctx.fillStyle = skin.glowColor; ctx.font = 'bold 11px sans-serif';
+        ctx.fillText(skin.name, cx, cy + 30);
 
-        // Selected indicator
         if (isSelected) {
-            ctx.fillStyle = colors[0]; ctx.font = 'bold 10px sans-serif';
-            ctx.fillText('TERPILIH', cx, cy + 42);
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 9px sans-serif';
+            ctx.fillText('✓ TERPILIH', cx, cy + 43);
         }
     });
 
-    // Back button
-    ctx.shadowColor = '#00e676'; ctx.shadowBlur = 10; ctx.fillStyle = '#00e676';
-    const btnY = startY + rows * (cellH + 10) + 20;
+    // OKE button
+    const btnY = startY + rows * (cellH + 8) + 15;
+    ctx.shadowColor = '#00e676'; ctx.shadowBlur = 12; ctx.fillStyle = '#00e676';
     roundRect(W / 2 - 80, btnY, 160, 45, 22); ctx.fill(); ctx.shadowBlur = 0;
     ctx.fillStyle = '#000'; ctx.font = 'bold 18px sans-serif';
     ctx.fillText('OKE!', W / 2, btnY + 22);
@@ -745,18 +906,18 @@ canvas.addEventListener('click', e => {
 });
 
 function handleSkinClick(mx, my) {
-    const cols = Math.min(4, Math.floor((W - 40) / 140));
-    const rows = Math.ceil(SNAKE_COLORS.length / cols);
-    const cellW = 130, cellH = 90;
+    const cols = Math.min(4, Math.floor((W - 30) / 150));
+    const rows = Math.ceil(SKINS.length / cols);
+    const cellW = 140, cellH = 100;
     const startX = W / 2 - (cols * cellW) / 2;
-    const startY = 110;
+    const startY = 90;
 
     // Check skin cards
-    SNAKE_COLORS.forEach((colors, i) => {
+    SKINS.forEach((skin, i) => {
         const col = i % cols;
         const row = Math.floor(i / cols);
         const cx = startX + col * cellW + cellW / 2;
-        const cy = startY + row * (cellH + 10) + cellH / 2;
+        const cy = startY + row * (cellH + 8) + cellH / 2;
         if (mx > cx - cellW / 2 + 5 && mx < cx + cellW / 2 - 5 && my > cy - cellH / 2 && my < cy + cellH / 2) {
             selectedSkin = i;
             localStorage.setItem('snakeSkin', i);
@@ -764,7 +925,7 @@ function handleSkinClick(mx, my) {
     });
 
     // Check OKE button
-    const btnY = startY + rows * (cellH + 10) + 20;
+    const btnY = startY + rows * (cellH + 8) + 15;
     if (mx > W / 2 - 80 && mx < W / 2 + 80 && my > btnY && my < btnY + 45) {
         state = 'menu';
     }
