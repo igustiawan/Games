@@ -6,15 +6,8 @@
     <title>Zombie Survival!</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body {
-            width: 100%; height: 100%; overflow: hidden;
-            touch-action: none; background: #0a0a0a;
-        }
-        body {
-            display: flex; align-items: center; justify-content: center;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            min-height: 100vh; min-height: 100dvh;
-        }
+        html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; background: #0a0a0a; }
+        body { display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, sans-serif; min-height: 100dvh; }
         canvas { display: block; }
     </style>
 </head>
@@ -23,51 +16,70 @@
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-
-
 let W, H;
 function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
 resize();
 window.addEventListener('resize', resize);
-
-// Prevent default touch
 document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 document.addEventListener('gesturestart', e => e.preventDefault());
 
 // ===== GAME STATE =====
-let state = 'menu'; // menu, playing, dead
+let state = 'menu';
 let player, zombies, bullets, particles, drops;
 let score, wave, waveTimer, zombiesLeft, spawnInterval, spawnTimer;
-let highScore = parseInt(localStorage.getItem('zombieHS') || '0');
+let highScore = parseInt(localStorage.getItem('zombieHS2') || '0');
 let pressedKeys = {};
-let joystick = { active: false, startX: 0, startY: 0, dx: 0, dy: 0 };
-let shootJoystick = { active: false, startX: 0, startY: 0, dx: 0, dy: 0 };
+let joystick = { active: false, startX: 0, startY: 0, dx: 0, dy: 0, id: -1 };
+let shootJoystick = { active: false, startX: 0, startY: 0, dx: 0, dy: 0, id: -1 };
 let animFrame = 0;
-
+let upgradeChoices = [];
+let xp = 0, xpNeeded = 20, level = 1;
 
 // ===== CONSTANTS =====
-const PLAYER_SPEED = 4;
-const BULLET_SPEED = 12;
-const BULLET_DAMAGE = 1;
-const SHOOT_COOLDOWN = 8;
 const PLAYER_RADIUS = 16;
 const BULLET_RADIUS = 4;
 
+// Weapon upgrades available
+const ALL_UPGRADES = [
+    { id: 'damage', name: 'Damage +', desc: 'Damage naik 50%', icon: '⚔', color: '#ff5252', apply: (p) => { p.weapon.damage *= 1.5; } },
+    { id: 'firerate', name: 'Fire Rate +', desc: 'Tembak lebih cepat', icon: '⚡', color: '#ffeb3b', apply: (p) => { p.weapon.cooldown = Math.max(2, p.weapon.cooldown - 2); } },
+    { id: 'multishot', name: 'Multi Shot', desc: 'Tembak 2 peluru', icon: '◆', color: '#e040fb', apply: (p) => { p.weapon.bullets = Math.min(8, p.weapon.bullets + 1); } },
+    { id: 'spread', name: 'Spread +', desc: 'Sudut tembak lebih lebar', icon: '∨', color: '#00bcd4', apply: (p) => { p.weapon.spread += 0.15; } },
+    { id: 'pierce', name: 'Pierce', desc: 'Peluru tembus musuh', icon: '→', color: '#76ff03', apply: (p) => { p.weapon.pierce += 1; } },
+    { id: 'speed', name: 'Move Speed +', desc: 'Gerak lebih cepat', icon: '»', color: '#00e5ff', apply: (p) => { p.speed += 0.8; } },
+    { id: 'maxhp', name: 'Max HP +', desc: 'HP maksimal naik', icon: '♥', color: '#ff1744', apply: (p) => { p.maxHp += 3; p.hp += 3; } },
+    { id: 'regen', name: 'Regen', desc: 'Nyawa regenerasi pelan', icon: '✚', color: '#00e676', apply: (p) => { p.regen += 0.005; } },
+    { id: 'bigbullet', name: 'Big Bullet', desc: 'Peluru lebih besar', icon: '●', color: '#ff9800', apply: (p) => { p.weapon.bulletSize += 2; } },
+    { id: 'range', name: 'Range +', desc: 'Peluru terbang lebih jauh', icon: '↗', color: '#8bc34a', apply: (p) => { p.weapon.range += 20; } },
+];
+
+// Player evolution stages
+const EVOLUTIONS = [
+    { level: 1, radius: 16, color: '#00bcd4', outline: '#006064', name: 'Recruit' },
+    { level: 3, radius: 18, color: '#2196f3', outline: '#0d47a1', name: 'Soldier' },
+    { level: 5, radius: 20, color: '#9c27b0', outline: '#4a148c', name: 'Veteran' },
+    { level: 8, radius: 22, color: '#ff9800', outline: '#e65100', name: 'Elite' },
+    { level: 12, radius: 24, color: '#f44336', outline: '#b71c1c', name: 'Commander' },
+    { level: 16, radius: 26, color: '#ffd600', outline: '#ff6f00', name: 'Legend' },
+];
+
 // Zombie types
 const ZOMBIE_TYPES = [
-    { name: 'normal', color: '#4caf50', hp: 3, speed: 1.2, radius: 14, score: 10 },
-    { name: 'fast', color: '#ffeb3b', hp: 2, speed: 2.5, radius: 12, score: 15 },
-    { name: 'tank', color: '#9c27b0', hp: 8, speed: 0.7, radius: 22, score: 25 },
-    { name: 'boss', color: '#f44336', hp: 25, speed: 0.5, radius: 32, score: 100 },
+    { name: 'normal', color: '#4caf50', hp: 3, speed: 1.2, radius: 14, score: 10, xp: 3 },
+    { name: 'fast', color: '#ffeb3b', hp: 2, speed: 2.8, radius: 11, score: 15, xp: 4 },
+    { name: 'tank', color: '#9c27b0', hp: 10, speed: 0.6, radius: 24, score: 25, xp: 8 },
+    { name: 'boss', color: '#f44336', hp: 40, speed: 0.4, radius: 35, score: 100, xp: 25 },
+    { name: 'exploder', color: '#ff6d00', hp: 4, speed: 1.8, radius: 16, score: 20, xp: 6 },
 ];
 
 // Drop types
 const DROP_TYPES = [
-    { type: 'heal', color: '#00e676', emoji: '+', effect: (p) => { p.hp = Math.min(p.maxHp, p.hp + 2); } },
-    { type: 'speed', color: '#00bcd4', emoji: '>', effect: (p) => { p.speedBoost = 180; } },
-    { type: 'rapid', color: '#ff9800', emoji: '!', effect: (p) => { p.rapidFire = 180; } },
-    { type: 'bomb', color: '#ff1744', emoji: '*', effect: () => { killAllZombies(); } },
+    { type: 'heal', color: '#00e676', emoji: '♥', effect: (p) => { p.hp = Math.min(p.maxHp, p.hp + 3); } },
+    { type: 'bomb', color: '#ff1744', emoji: '★', effect: () => { killAllZombies(); } },
+    { type: 'xp', color: '#ffd600', emoji: 'XP', effect: (p) => { xp += 10; } },
 ];
+
+
 
 
 // ===== INIT =====
@@ -75,49 +87,76 @@ function initGame() {
     player = {
         x: W / 2, y: H / 2,
         hp: 10, maxHp: 10,
-        shootCooldown: 0,
-        speedBoost: 0, rapidFire: 0,
+        speed: 4,
+        regen: 0,
         invincible: 0,
-        angle: 0
+        angle: 0,
+        weapon: {
+            damage: 1,
+            cooldown: 8,
+            bullets: 1,
+            spread: 0.1,
+            pierce: 0,
+            bulletSize: 4,
+            range: 60,
+            timer: 0
+        }
     };
-    zombies = [];
-    bullets = [];
-    particles = [];
-    drops = [];
-    score = 0;
-    wave = 0;
-    waveTimer = 0;
-    zombiesLeft = 0;
-    spawnInterval = 60;
-    spawnTimer = 0;
+    zombies = []; bullets = []; particles = []; drops = [];
+    score = 0; wave = 0; xp = 0; xpNeeded = 20; level = 1;
+    waveTimer = 0; zombiesLeft = 0; spawnInterval = 60; spawnTimer = 0;
+    upgradeChoices = [];
     nextWave();
+    state = 'playing';
+}
+
+function getEvolution() {
+    let evo = EVOLUTIONS[0];
+    for (let i = EVOLUTIONS.length - 1; i >= 0; i--) {
+        if (level >= EVOLUTIONS[i].level) { evo = EVOLUTIONS[i]; break; }
+    }
+    return evo;
+}
+
+function levelUp() {
+    level++;
+    xp -= xpNeeded;
+    xpNeeded = Math.floor(xpNeeded * 1.4);
+    // Show upgrade choices
+    const shuffled = [...ALL_UPGRADES].sort(() => Math.random() - 0.5);
+    upgradeChoices = shuffled.slice(0, 3);
+    state = 'upgrade';
+}
+
+function selectUpgrade(index) {
+    if (upgradeChoices[index]) {
+        upgradeChoices[index].apply(player);
+    }
+    upgradeChoices = [];
     state = 'playing';
 }
 
 function nextWave() {
     wave++;
-    waveTimer = 120; // 2 sec pause between waves
-    const count = 5 + wave * 3;
+    waveTimer = 90;
+    const count = 5 + wave * 4;
     zombiesLeft = count;
-    spawnInterval = Math.max(15, 60 - wave * 3);
+    spawnInterval = Math.max(10, 50 - wave * 2);
     spawnTimer = 0;
 }
 
 function spawnZombie() {
-    // Pick type based on wave
     let type;
     const r = Math.random();
-    if (wave >= 5 && wave % 5 === 0 && r < 0.1) {
-        type = ZOMBIE_TYPES[3]; // boss every 5 waves
-    } else if (wave >= 3 && r < 0.2) {
-        type = ZOMBIE_TYPES[2]; // tank
-    } else if (r < 0.4) {
-        type = ZOMBIE_TYPES[1]; // fast
-    } else {
-        type = ZOMBIE_TYPES[0]; // normal
-    }
+    if (wave >= 10 && r < 0.05) type = ZOMBIE_TYPES[3];
+    else if (wave >= 5 && r < 0.15) type = ZOMBIE_TYPES[4];
+    else if (wave >= 3 && r < 0.25) type = ZOMBIE_TYPES[2];
+    else if (r < 0.4) type = ZOMBIE_TYPES[1];
+    else type = ZOMBIE_TYPES[0];
 
-    // Spawn from edge
+    // Scale HP with wave
+    const hpScale = 1 + (wave - 1) * 0.15;
+
     let x, y;
     const side = Math.floor(Math.random() * 4);
     if (side === 0) { x = -30; y = Math.random() * H; }
@@ -125,58 +164,42 @@ function spawnZombie() {
     else if (side === 2) { x = Math.random() * W; y = -30; }
     else { x = Math.random() * W; y = H + 30; }
 
-    zombies.push({
-        x, y, ...type,
-        maxHp: type.hp,
-        hitFlash: 0
-    });
+    zombies.push({ x, y, ...type, hp: Math.ceil(type.hp * hpScale), maxHp: Math.ceil(type.hp * hpScale), hitFlash: 0 });
 }
 
-
 function killAllZombies() {
-    zombies.forEach(z => {
-        score += z.score;
-        spawnParticles(z.x, z.y, z.color, 8);
-    });
+    zombies.forEach(z => { score += z.score; xp += z.xp; spawnParticles(z.x, z.y, z.color, 8); });
     zombies = [];
 }
 
 function spawnParticles(x, y, color, count) {
     for (let i = 0; i < count; i++) {
-        particles.push({
-            x, y,
-            vx: (Math.random() - 0.5) * 10,
-            vy: (Math.random() - 0.5) * 10,
-            life: 1, color,
-            size: Math.random() * 4 + 2
-        });
+        particles.push({ x, y, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10, life: 1, color, size: Math.random() * 4 + 2 });
     }
 }
 
 function spawnDrop(x, y) {
-    if (Math.random() > 0.15) return; // 15% chance
+    if (Math.random() > 0.12) return;
     const type = DROP_TYPES[Math.floor(Math.random() * DROP_TYPES.length)];
     drops.push({ x, y, ...type, life: 300 });
 }
+
+
 
 // ===== UPDATE =====
 function update() {
     if (state !== 'playing') return;
     animFrame++;
 
+    // Regen
+    if (player.regen > 0) player.hp = Math.min(player.maxHp, player.hp + player.regen);
+
     // Wave management
-    if (waveTimer > 0) {
-        waveTimer--;
-    } else if (zombiesLeft > 0) {
+    if (waveTimer > 0) { waveTimer--; }
+    else if (zombiesLeft > 0) {
         spawnTimer--;
-        if (spawnTimer <= 0) {
-            spawnZombie();
-            zombiesLeft--;
-            spawnTimer = spawnInterval;
-        }
-    } else if (zombies.length === 0) {
-        nextWave();
-    }
+        if (spawnTimer <= 0) { spawnZombie(); zombiesLeft--; spawnTimer = spawnInterval; }
+    } else if (zombies.length === 0) { nextWave(); }
 
     // Player movement
     let mx = 0, my = 0;
@@ -184,124 +207,111 @@ function update() {
     if (pressedKeys['s'] || pressedKeys['S'] || pressedKeys['ArrowDown']) my = 1;
     if (pressedKeys['a'] || pressedKeys['A'] || pressedKeys['ArrowLeft']) mx = -1;
     if (pressedKeys['d'] || pressedKeys['D'] || pressedKeys['ArrowRight']) mx = 1;
-
-    // Mobile joystick
     if (joystick.active) {
-        const len = Math.sqrt(joystick.dx * joystick.dx + joystick.dy * joystick.dy);
+        const len = Math.hypot(joystick.dx, joystick.dy);
         if (len > 10) { mx = joystick.dx / len; my = joystick.dy / len; }
     }
-
     if (mx || my) {
-        const len = Math.sqrt(mx * mx + my * my);
-        const spd = PLAYER_SPEED + (player.speedBoost > 0 ? 2 : 0);
-        player.x += (mx / len) * spd;
-        player.y += (my / len) * spd;
-        player.angle = Math.atan2(my, mx);
+        const len = Math.hypot(mx, my);
+        player.x += (mx / len) * player.speed;
+        player.y += (my / len) * player.speed;
     }
-
-    // Clamp player
     player.x = Math.max(PLAYER_RADIUS, Math.min(W - PLAYER_RADIUS, player.x));
     player.y = Math.max(PLAYER_RADIUS, Math.min(H - PLAYER_RADIUS, player.y));
-
-    // Decrease buffs
-    if (player.speedBoost > 0) player.speedBoost--;
-    if (player.rapidFire > 0) player.rapidFire--;
     if (player.invincible > 0) player.invincible--;
 
-
-    // Auto-shoot towards nearest zombie
-    player.shootCooldown--;
-    const cooldown = player.rapidFire > 0 ? 4 : SHOOT_COOLDOWN;
-    if (player.shootCooldown <= 0 && zombies.length > 0) {
-        // Find nearest zombie
+    // Auto-shoot
+    player.weapon.timer--;
+    if (player.weapon.timer <= 0 && zombies.length > 0) {
         let nearest = null, nearDist = Infinity;
-        zombies.forEach(z => {
-            const d = Math.hypot(z.x - player.x, z.y - player.y);
-            if (d < nearDist) { nearDist = d; nearest = z; }
-        });
+        zombies.forEach(z => { const d = Math.hypot(z.x - player.x, z.y - player.y); if (d < nearDist) { nearDist = d; nearest = z; } });
 
-        // Shoot joystick override
-        let shootDx, shootDy;
+        let aimDx, aimDy;
         if (shootJoystick.active && Math.hypot(shootJoystick.dx, shootJoystick.dy) > 10) {
-            shootDx = shootJoystick.dx;
-            shootDy = shootJoystick.dy;
+            aimDx = shootJoystick.dx; aimDy = shootJoystick.dy;
         } else if (nearest) {
-            shootDx = nearest.x - player.x;
-            shootDy = nearest.y - player.y;
+            aimDx = nearest.x - player.x; aimDy = nearest.y - player.y;
         }
-
-        if (shootDx !== undefined) {
-            const len = Math.hypot(shootDx, shootDy) || 1;
-            player.angle = Math.atan2(shootDy, shootDx);
-            bullets.push({
-                x: player.x + (shootDx / len) * PLAYER_RADIUS,
-                y: player.y + (shootDy / len) * PLAYER_RADIUS,
-                vx: (shootDx / len) * BULLET_SPEED,
-                vy: (shootDy / len) * BULLET_SPEED,
-                life: 60
-            });
-            player.shootCooldown = cooldown;
+        if (aimDx !== undefined) {
+            const aimLen = Math.hypot(aimDx, aimDy) || 1;
+            const baseAngle = Math.atan2(aimDy, aimDx);
+            player.angle = baseAngle;
+            const n = player.weapon.bullets;
+            const totalSpread = player.weapon.spread * (n - 1);
+            for (let i = 0; i < n; i++) {
+                const a = baseAngle - totalSpread / 2 + (n > 1 ? (totalSpread / (n - 1)) * i : 0);
+                bullets.push({
+                    x: player.x + Math.cos(a) * PLAYER_RADIUS,
+                    y: player.y + Math.sin(a) * PLAYER_RADIUS,
+                    vx: Math.cos(a) * 12,
+                    vy: Math.sin(a) * 12,
+                    damage: player.weapon.damage,
+                    pierce: player.weapon.pierce,
+                    size: player.weapon.bulletSize,
+                    life: player.weapon.range
+                });
+            }
+            player.weapon.timer = player.weapon.cooldown;
         }
     }
 
     // Update bullets
     for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
-        b.x += b.vx; b.y += b.vy;
-        b.life--;
-        if (b.x < -10 || b.x > W + 10 || b.y < -10 || b.y > H + 10 || b.life <= 0) {
-            bullets.splice(i, 1); continue;
-        }
-        // Hit zombie
+        b.x += b.vx; b.y += b.vy; b.life--;
+        if (b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20 || b.life <= 0) { bullets.splice(i, 1); continue; }
         for (let j = zombies.length - 1; j >= 0; j--) {
             const z = zombies[j];
-            if (Math.hypot(b.x - z.x, b.y - z.y) < z.radius + BULLET_RADIUS) {
-                z.hp -= BULLET_DAMAGE;
+            if (Math.hypot(b.x - z.x, b.y - z.y) < z.radius + b.size) {
+                z.hp -= b.damage;
                 z.hitFlash = 5;
                 spawnParticles(b.x, b.y, z.color, 3);
-                bullets.splice(i, 1);
+                if (b.pierce > 0) { b.pierce--; }
+                else { bullets.splice(i, 1); }
                 if (z.hp <= 0) {
                     score += z.score;
-                    spawnParticles(z.x, z.y, z.color, 10);
+                    xp += z.xp;
+                    spawnParticles(z.x, z.y, z.color, 12);
                     spawnDrop(z.x, z.y);
                     zombies.splice(j, 1);
+                    // Exploder type
+                    if (z.name === 'exploder') {
+                        zombies.forEach(oz => {
+                            if (Math.hypot(oz.x - z.x, oz.y - z.y) < 80) { oz.hp -= 3; oz.hitFlash = 5; }
+                        });
+                        spawnParticles(z.x, z.y, '#ff6d00', 20);
+                    }
                 }
                 break;
             }
         }
     }
 
-
     // Update zombies
-    zombies.forEach(z => {
+    for (let i = zombies.length - 1; i >= 0; i--) {
+        const z = zombies[i];
         const dx = player.x - z.x, dy = player.y - z.y;
         const len = Math.hypot(dx, dy) || 1;
-        z.x += (dx / len) * z.speed;
-        z.y += (dy / len) * z.speed;
+        z.x += (dx / len) * z.speed; z.y += (dy / len) * z.speed;
         if (z.hitFlash > 0) z.hitFlash--;
-
-        // Hit player
-        if (Math.hypot(z.x - player.x, z.y - player.y) < z.radius + PLAYER_RADIUS) {
+        if (Math.hypot(z.x - player.x, z.y - player.y) < z.radius + getEvolution().radius) {
             if (player.invincible <= 0) {
                 player.hp--;
-                player.invincible = 30;
-                spawnParticles(player.x, player.y, '#ff1744', 8);
-                if (navigator.vibrate) navigator.vibrate(100);
-                if (player.hp <= 0) {
-                    die();
-                    return;
-                }
+                player.invincible = 25;
+                spawnParticles(player.x, player.y, '#ff1744', 6);
+                if (navigator.vibrate) navigator.vibrate(80);
+                if (player.hp <= 0) { die(); return; }
             }
         }
-    });
+    }
 
     // Update drops
     for (let i = drops.length - 1; i >= 0; i--) {
         drops[i].life--;
         if (drops[i].life <= 0) { drops.splice(i, 1); continue; }
-        if (Math.hypot(drops[i].x - player.x, drops[i].y - player.y) < PLAYER_RADIUS + 15) {
+        if (Math.hypot(drops[i].x - player.x, drops[i].y - player.y) < getEvolution().radius + 18) {
             drops[i].effect(player);
-            spawnParticles(drops[i].x, drops[i].y, drops[i].color, 8);
+            spawnParticles(drops[i].x, drops[i].y, drops[i].color, 6);
             drops.splice(i, 1);
         }
     }
@@ -309,386 +319,305 @@ function update() {
     // Update particles
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
-        p.x += p.vx; p.y += p.vy;
-        p.vx *= 0.93; p.vy *= 0.93;
-        p.life -= 0.03;
+        p.x += p.vx; p.y += p.vy; p.vx *= 0.92; p.vy *= 0.92; p.life -= 0.03;
         if (p.life <= 0) particles.splice(i, 1);
     }
+
+    // Check level up
+    if (xp >= xpNeeded) { levelUp(); }
 
     draw();
 }
 
 function die() {
     state = 'dead';
-    if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('zombieHS', highScore);
-    }
+    if (score > highScore) { highScore = score; localStorage.setItem('zombieHS2', highScore); }
     if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
-    spawnParticles(player.x, player.y, '#ff1744', 25);
-    // Death animation
+    spawnParticles(player.x, player.y, '#ff1744', 30);
     let frames = 0;
     const anim = setInterval(() => {
         frames++;
-        for (let i = particles.length - 1; i >= 0; i--) {
-            const p = particles[i];
-            p.x += p.vx; p.y += p.vy;
-            p.vx *= 0.93; p.vy *= 0.93;
-            p.life -= 0.03;
-            if (p.life <= 0) particles.splice(i, 1);
-        }
+        for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i]; p.x += p.vx; p.y += p.vy; p.vx *= 0.92; p.vy *= 0.92; p.life -= 0.03; if (p.life <= 0) particles.splice(i, 1); }
         draw();
-        if (frames > 40) clearInterval(anim);
+        if (frames > 50) clearInterval(anim);
     }, 16);
 }
 
 
+
 // ===== DRAWING =====
 function draw() {
-    // Background
-    ctx.fillStyle = '#0f0f1a';
+    ctx.fillStyle = '#0a0a14';
     ctx.fillRect(0, 0, W, H);
-
-    // Ground grid
-    ctx.strokeStyle = 'rgba(40, 40, 60, 0.5)';
+    // Grid
+    ctx.strokeStyle = 'rgba(30, 30, 50, 0.6)';
     ctx.lineWidth = 1;
-    const gs = 50;
-    for (let x = 0; x < W; x += gs) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-    for (let y = 0; y < H; y += gs) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    for (let x = 0; x < W; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
     // Drops
     drops.forEach(d => {
         const pulse = 1 + Math.sin(animFrame * 0.1) * 0.2;
         ctx.globalAlpha = d.life < 60 ? d.life / 60 : 1;
-        ctx.shadowColor = d.color;
-        ctx.shadowBlur = 12;
+        ctx.shadowColor = d.color; ctx.shadowBlur = 12;
         ctx.fillStyle = d.color;
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, 10 * pulse, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(d.x, d.y, 10 * pulse, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 14px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(d.emoji, d.x, d.y);
         ctx.globalAlpha = 1;
     });
 
     // Bullets
     bullets.forEach(b => {
-        ctx.shadowColor = '#ffeb3b';
-        ctx.shadowBlur = 8;
+        ctx.shadowColor = '#ffeb3b'; ctx.shadowBlur = 8;
         ctx.fillStyle = '#ffeb3b';
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, BULLET_RADIUS, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 0.4;
-        ctx.beginPath();
-        ctx.arc(b.x - b.vx * 0.5, b.y - b.vy * 0.5, BULLET_RADIUS * 0.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath(); ctx.arc(b.x - b.vx * 0.4, b.y - b.vy * 0.4, b.size * 0.6, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     });
-
 
     // Zombies
     zombies.forEach(z => {
-        ctx.shadowColor = z.color;
-        ctx.shadowBlur = z.hitFlash > 0 ? 20 : 8;
+        ctx.shadowColor = z.color; ctx.shadowBlur = z.hitFlash > 0 ? 20 : 6;
         ctx.fillStyle = z.hitFlash > 0 ? '#fff' : z.color;
-        ctx.beginPath();
-        ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
-
-        // Inner face
+        // Inner
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.beginPath();
-        ctx.arc(z.x, z.y, z.radius * 0.6, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Eyes (angry)
-        const eyeOff = z.radius * 0.3;
+        ctx.beginPath(); ctx.arc(z.x, z.y, z.radius * 0.55, 0, Math.PI * 2); ctx.fill();
+        // Eyes
+        const eo = z.radius * 0.3;
         ctx.fillStyle = '#ff1744';
-        ctx.beginPath();
-        ctx.arc(z.x - eyeOff, z.y - eyeOff * 0.5, z.radius * 0.15, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(z.x + eyeOff, z.y - eyeOff * 0.5, z.radius * 0.15, 0, Math.PI * 2);
-        ctx.fill();
-
-        // HP bar for tanks/bosses
-        if (z.maxHp > 3) {
-            const barW = z.radius * 2;
-            const barH = 4;
-            const barX = z.x - barW / 2;
-            const barY = z.y - z.radius - 10;
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.fillRect(barX, barY, barW, barH);
+        ctx.beginPath(); ctx.arc(z.x - eo, z.y - eo * 0.3, z.radius * 0.14, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(z.x + eo, z.y - eo * 0.3, z.radius * 0.14, 0, Math.PI * 2); ctx.fill();
+        // HP bar for big ones
+        if (z.maxHp > 5) {
+            const bw = z.radius * 2, bh = 4, bx = z.x - bw / 2, by = z.y - z.radius - 10;
+            ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(bx, by, bw, bh);
             ctx.fillStyle = z.hp / z.maxHp > 0.5 ? '#00e676' : '#ff1744';
-            ctx.fillRect(barX, barY, barW * (z.hp / z.maxHp), barH);
+            ctx.fillRect(bx, by, bw * (z.hp / z.maxHp), bh);
         }
     });
 
     // Player
-    if (state === 'playing') {
+    if (state === 'playing' || state === 'upgrade') {
+        const evo = getEvolution();
         const flash = player.invincible > 0 && Math.floor(animFrame / 3) % 2;
         if (!flash) {
-            // Body glow
-            ctx.shadowColor = '#00bcd4';
-            ctx.shadowBlur = 20;
-            ctx.fillStyle = player.speedBoost > 0 ? '#00e5ff' : '#00bcd4';
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, PLAYER_RADIUS, 0, Math.PI * 2);
-            ctx.fill();
+            // Outer ring (evolution indicator)
+            ctx.strokeStyle = evo.outline;
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(player.x, player.y, evo.radius + 4, 0, Math.PI * 2); ctx.stroke();
+            // Body
+            ctx.shadowColor = evo.color; ctx.shadowBlur = 20;
+            ctx.fillStyle = evo.color;
+            ctx.beginPath(); ctx.arc(player.x, player.y, evo.radius, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
-
-            // Gun direction
-            const gunLen = PLAYER_RADIUS + 10;
-            const gx = player.x + Math.cos(player.angle) * gunLen;
-            const gy = player.y + Math.sin(player.angle) * gunLen;
-            ctx.strokeStyle = player.rapidFire > 0 ? '#ff9800' : '#fff';
-            ctx.lineWidth = 4;
+            // Shield ring if leveled up
+            if (level >= 5) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(player.x, player.y, evo.radius + 8, animFrame * 0.02, animFrame * 0.02 + Math.PI * 1.5); ctx.stroke();
+            }
+            // Gun barrel
+            const gunLen = evo.radius + 12;
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = player.weapon.bullets > 3 ? 6 : player.weapon.bullets > 1 ? 5 : 4;
             ctx.lineCap = 'round';
             ctx.beginPath();
-            ctx.moveTo(player.x + Math.cos(player.angle) * 8, player.y + Math.sin(player.angle) * 8);
-            ctx.lineTo(gx, gy);
+            ctx.moveTo(player.x + Math.cos(player.angle) * evo.radius * 0.4, player.y + Math.sin(player.angle) * evo.radius * 0.4);
+            ctx.lineTo(player.x + Math.cos(player.angle) * gunLen, player.y + Math.sin(player.angle) * gunLen);
             ctx.stroke();
-
+            // Extra gun barrels for multishot
+            if (player.weapon.bullets >= 3) {
+                const off = 0.3;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(player.x + Math.cos(player.angle + off) * evo.radius * 0.3, player.y + Math.sin(player.angle + off) * evo.radius * 0.3);
+                ctx.lineTo(player.x + Math.cos(player.angle + off) * (gunLen - 4), player.y + Math.sin(player.angle + off) * (gunLen - 4));
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(player.x + Math.cos(player.angle - off) * evo.radius * 0.3, player.y + Math.sin(player.angle - off) * evo.radius * 0.3);
+                ctx.lineTo(player.x + Math.cos(player.angle - off) * (gunLen - 4), player.y + Math.sin(player.angle - off) * (gunLen - 4));
+                ctx.stroke();
+            }
             // Face
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, PLAYER_RADIUS * 0.55, 0, Math.PI * 2);
-            ctx.fill();
-
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.beginPath(); ctx.arc(player.x, player.y, evo.radius * 0.5, 0, Math.PI * 2); ctx.fill();
             // Eyes
             ctx.fillStyle = '#fff';
-            const ed = PLAYER_RADIUS * 0.25;
-            ctx.beginPath();
-            ctx.arc(player.x + Math.cos(player.angle) * ed - 4, player.y + Math.sin(player.angle) * ed - 4, 3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(player.x + Math.cos(player.angle) * ed + 4, player.y + Math.sin(player.angle) * ed + 4, 3, 0, Math.PI * 2);
-            ctx.fill();
+            const ed = evo.radius * 0.22;
+            ctx.beginPath(); ctx.arc(player.x + Math.cos(player.angle) * ed - 3, player.y + Math.sin(player.angle) * ed - 3, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(player.x + Math.cos(player.angle) * ed + 3, player.y + Math.sin(player.angle) * ed + 3, 3, 0, Math.PI * 2); ctx.fill();
         }
     }
 
-
     // Particles
-    particles.forEach(p => {
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-        ctx.fill();
-    });
+    particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); ctx.fill(); });
     ctx.globalAlpha = 1;
 
-    // HUD
     drawHUD();
-
-    // Overlays
     if (state === 'menu') drawMenu();
     if (state === 'dead') drawDead();
+    if (state === 'upgrade') drawUpgrade();
 
-    // Wave announcement
-    if (waveTimer > 60 && state === 'playing') {
-        ctx.globalAlpha = (waveTimer - 60) / 60;
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 36px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+    // Wave text
+    if (waveTimer > 50 && state === 'playing') {
+        ctx.globalAlpha = (waveTimer - 50) / 40;
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('WAVE ' + wave, W / 2, H / 2);
         ctx.globalAlpha = 1;
     }
 }
 
+
+
 function drawHUD() {
-    // HP Bar (bottom left or top)
-    const barW = 200, barH = 16;
-    const barX = 20, barY = 20;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
+    const evo = getEvolution();
+    // HP Bar
+    const barW = 180, barH = 14, barX = 15, barY = 15;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
     ctx.fillStyle = player.hp / player.maxHp > 0.3 ? '#00e676' : '#ff1744';
     ctx.fillRect(barX, barY, barW * (player.hp / player.maxHp), barH);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('HP: ' + player.hp + '/' + player.maxHp, barX + 5, barY + barH / 2);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(Math.ceil(player.hp) + '/' + player.maxHp, barX + 4, barY + barH / 2);
 
-    // Score (top right)
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText('Skor: ' + score, W - 20, 30);
-
-    // Wave (top center)
-    ctx.textAlign = 'center';
+    // XP Bar
+    const xpBarY = barY + barH + 6;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(barX - 2, xpBarY - 2, barW + 4, 10);
     ctx.fillStyle = '#ffd600';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText('Wave ' + wave, W / 2, 30);
+    ctx.fillRect(barX, xpBarY, barW * (xp / xpNeeded), 6);
+    ctx.fillStyle = '#fff'; ctx.font = '9px sans-serif';
+    ctx.fillText('Lv.' + level + ' ' + evo.name, barX, xpBarY + 16);
 
-    // Buff indicators
-    let buffY = 50;
-    if (player.speedBoost > 0) {
-        ctx.fillStyle = '#00bcd4';
-        ctx.font = '12px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText('SPEED ' + Math.ceil(player.speedBoost / 60) + 's', 20, buffY);
-        buffY += 18;
-    }
-    if (player.rapidFire > 0) {
-        ctx.fillStyle = '#ff9800';
-        ctx.fillText('RAPID ' + Math.ceil(player.rapidFire / 60) + 's', 20, buffY);
-    }
+    // Score & Wave
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText('Skor: ' + score, W - 15, 25);
+    ctx.fillStyle = '#ffd600'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Wave ' + wave, W / 2, 25);
 
-    // Mobile joystick indicators
+    // Joystick
     if (joystick.active) {
-        ctx.globalAlpha = 0.3;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(joystick.startX, joystick.startY, 50, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(joystick.startX + joystick.dx * 0.5, joystick.startY + joystick.dy * 0.5, 20, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.globalAlpha = 0.25; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(joystick.startX, joystick.startY, 50, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(joystick.startX + joystick.dx * 0.4, joystick.startY + joystick.dy * 0.4, 18, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1;
     }
     if (shootJoystick.active) {
-        ctx.globalAlpha = 0.3;
-        ctx.strokeStyle = '#ff5252';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(shootJoystick.startX, shootJoystick.startY, 50, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = '#ff5252';
-        ctx.beginPath();
-        ctx.arc(shootJoystick.startX + shootJoystick.dx * 0.5, shootJoystick.startY + shootJoystick.dy * 0.5, 20, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.globalAlpha = 0.25; ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(shootJoystick.startX, shootJoystick.startY, 50, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#ff5252'; ctx.beginPath(); ctx.arc(shootJoystick.startX + shootJoystick.dx * 0.4, shootJoystick.startY + shootJoystick.dy * 0.4, 18, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1;
     }
 }
 
-
 function drawMenu() {
-    ctx.fillStyle = 'rgba(0,0,0,0.85)';
-    ctx.fillRect(0, 0, W, H);
-
-    ctx.fillStyle = '#ff1744';
-    ctx.font = 'bold 48px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.shadowColor = '#ff1744';
-    ctx.shadowBlur = 20;
-    ctx.fillText('ZOMBIE SURVIVAL', W / 2, H / 2 - 100);
+    ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ff1744'; ctx.font = 'bold 44px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#ff1744'; ctx.shadowBlur = 20;
+    ctx.fillText('ZOMBIE SURVIVAL', W / 2, H / 2 - 110);
     ctx.shadowBlur = 0;
-
-    ctx.fillStyle = '#aaa';
-    ctx.font = '18px sans-serif';
-    ctx.fillText('Bertahan hidup dari serangan zombie!', W / 2, H / 2 - 50);
-
-    // Start button
-    ctx.shadowColor = '#00e676';
-    ctx.shadowBlur = 15;
-    ctx.fillStyle = '#00e676';
-    roundRect(W / 2 - 100, H / 2 - 5, 200, 55, 28);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#000';
-    ctx.font = 'bold 22px sans-serif';
-    ctx.fillText('MAIN!', W / 2, H / 2 + 22);
-
-    ctx.fillStyle = '#666';
-    ctx.font = '14px sans-serif';
-    ctx.fillText('WASD/Arrow = Gerak | Auto-shoot', W / 2, H / 2 + 80);
-    ctx.fillText('Mobile: Joystick kiri = gerak', W / 2, H / 2 + 100);
-
-    if (highScore > 0) {
-        ctx.fillStyle = '#ffd600';
-        ctx.font = 'bold 16px sans-serif';
-        ctx.fillText('High Score: ' + highScore, W / 2, H / 2 + 140);
-    }
+    ctx.fillStyle = '#aaa'; ctx.font = '16px sans-serif';
+    ctx.fillText('Tembak zombie, level up, upgrade senjata!', W / 2, H / 2 - 65);
+    // Start btn
+    ctx.shadowColor = '#00e676'; ctx.shadowBlur = 15; ctx.fillStyle = '#00e676';
+    roundRect(W / 2 - 100, H / 2 - 15, 200, 55, 28); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#000'; ctx.font = 'bold 22px sans-serif';
+    ctx.fillText('MAIN!', W / 2, H / 2 + 12);
+    ctx.fillStyle = '#555'; ctx.font = '13px sans-serif';
+    ctx.fillText('WASD/Arrow = Gerak | Auto-shoot', W / 2, H / 2 + 65);
+    ctx.fillText('Mobile: Kiri=gerak, Kanan=arah tembak', W / 2, H / 2 + 85);
+    if (highScore > 0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 14px sans-serif'; ctx.fillText('Best: ' + highScore, W / 2, H / 2 + 120); }
 }
 
 function drawDead() {
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ff1744'; ctx.font = 'bold 40px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('MATI!', W / 2, H / 2 - 80);
+    ctx.fillStyle = '#fff'; ctx.font = '20px sans-serif';
+    ctx.fillText('Skor: ' + score + '  |  Wave: ' + wave + '  |  Lv.' + level, W / 2, H / 2 - 35);
+    if (score >= highScore && score > 0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 16px sans-serif'; ctx.fillText('REKOR BARU!', W / 2, H / 2 - 5); }
+    ctx.shadowColor = '#00e676'; ctx.shadowBlur = 15; ctx.fillStyle = '#00e676';
+    roundRect(W / 2 - 100, H / 2 + 20, 200, 55, 28); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#000'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('MAIN LAGI', W / 2, H / 2 + 48);
+}
 
-    ctx.fillStyle = '#ff1744';
-    ctx.font = 'bold 42px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('MATI!', W / 2, H / 2 - 70);
+function drawUpgrade() {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffd600'; ctx.font = 'bold 32px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('LEVEL UP! (Lv.' + level + ')', W / 2, H / 2 - 130);
+    ctx.fillStyle = '#aaa'; ctx.font = '16px sans-serif';
+    ctx.fillText('Pilih upgrade:', W / 2, H / 2 - 95);
 
-    ctx.fillStyle = '#fff';
-    ctx.font = '22px sans-serif';
-    ctx.fillText('Skor: ' + score + ' | Wave: ' + wave, W / 2, H / 2 - 25);
+    const cardW = Math.min(180, (W - 80) / 3);
+    const cardH = 140;
+    const startX = W / 2 - (cardW * 3 + 20 * 2) / 2;
+    const cardY = H / 2 - 50;
 
-    if (score >= highScore && score > 0) {
-        ctx.fillStyle = '#ffd600';
-        ctx.font = 'bold 18px sans-serif';
-        ctx.fillText('REKOR BARU!', W / 2, H / 2 + 5);
-    }
-
-    ctx.shadowColor = '#00e676';
-    ctx.shadowBlur = 15;
-    ctx.fillStyle = '#00e676';
-    roundRect(W / 2 - 100, H / 2 + 30, 200, 55, 28);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#000';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.fillText('MAIN LAGI', W / 2, H / 2 + 58);
+    upgradeChoices.forEach((u, i) => {
+        const cx = startX + i * (cardW + 20);
+        // Card bg
+        ctx.fillStyle = 'rgba(30,30,50,0.9)';
+        ctx.strokeStyle = u.color;
+        ctx.lineWidth = 2;
+        roundRect(cx, cardY, cardW, cardH, 15); ctx.fill(); ctx.stroke();
+        // Icon
+        ctx.fillStyle = u.color; ctx.font = 'bold 28px sans-serif';
+        ctx.fillText(u.icon, cx + cardW / 2, cardY + 35);
+        // Name
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(u.name, cx + cardW / 2, cardY + 70);
+        // Desc
+        ctx.fillStyle = '#aaa'; ctx.font = '11px sans-serif';
+        ctx.fillText(u.desc, cx + cardW / 2, cardY + 95);
+        // Button
+        ctx.fillStyle = u.color;
+        roundRect(cx + 20, cardY + cardH - 35, cardW - 40, 28, 14); ctx.fill();
+        ctx.fillStyle = '#000'; ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('PILIH', cx + cardW / 2, cardY + cardH - 21);
+    });
 }
 
 function roundRect(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
 }
+
 
 
 // ===== INPUT =====
 document.addEventListener('keydown', e => { pressedKeys[e.key] = true; e.preventDefault(); });
 document.addEventListener('keyup', e => { pressedKeys[e.key] = false; });
 
-// Touch - dual joystick (left = move, right = shoot direction)
-let activeTouches = {};
 canvas.addEventListener('touchstart', e => {
     for (const t of e.changedTouches) {
+        const tx = t.clientX, ty = t.clientY;
         if (state === 'menu' || state === 'dead') {
-            // Check button
-            const bx = W / 2 - 100, by = state === 'menu' ? H / 2 - 5 : H / 2 + 30;
-            if (t.clientX > bx && t.clientX < bx + 200 && t.clientY > by && t.clientY < by + 55) {
-                initGame();
-            }
-            return;
+            const by = state === 'menu' ? H / 2 - 15 : H / 2 + 20;
+            if (tx > W / 2 - 100 && tx < W / 2 + 100 && ty > by && ty < by + 55) initGame();
+            break;
         }
-        activeTouches[t.identifier] = { startX: t.clientX, startY: t.clientY };
-        if (t.clientX < W / 2) {
-            joystick.active = true;
-            joystick.startX = t.clientX;
-            joystick.startY = t.clientY;
-            joystick.dx = 0; joystick.dy = 0;
-            joystick.id = t.identifier;
+        if (state === 'upgrade') {
+            const cardW = Math.min(180, (W - 80) / 3);
+            const cardH = 140;
+            const startX = W / 2 - (cardW * 3 + 20 * 2) / 2;
+            const cardY = H / 2 - 50;
+            for (let i = 0; i < 3; i++) {
+                const cx = startX + i * (cardW + 20);
+                if (tx > cx && tx < cx + cardW && ty > cardY && ty < cardY + cardH) { selectUpgrade(i); break; }
+            }
+            break;
+        }
+        if (tx < W / 2) {
+            joystick.active = true; joystick.startX = tx; joystick.startY = ty; joystick.dx = 0; joystick.dy = 0; joystick.id = t.identifier;
         } else {
-            shootJoystick.active = true;
-            shootJoystick.startX = t.clientX;
-            shootJoystick.startY = t.clientY;
-            shootJoystick.dx = 0; shootJoystick.dy = 0;
-            shootJoystick.id = t.identifier;
+            shootJoystick.active = true; shootJoystick.startX = tx; shootJoystick.startY = ty; shootJoystick.dx = 0; shootJoystick.dy = 0; shootJoystick.id = t.identifier;
         }
     }
     e.preventDefault();
@@ -696,37 +625,32 @@ canvas.addEventListener('touchstart', e => {
 
 canvas.addEventListener('touchmove', e => {
     for (const t of e.changedTouches) {
-        if (joystick.active && t.identifier === joystick.id) {
-            joystick.dx = t.clientX - joystick.startX;
-            joystick.dy = t.clientY - joystick.startY;
-        }
-        if (shootJoystick.active && t.identifier === shootJoystick.id) {
-            shootJoystick.dx = t.clientX - shootJoystick.startX;
-            shootJoystick.dy = t.clientY - shootJoystick.startY;
-        }
+        if (joystick.active && t.identifier === joystick.id) { joystick.dx = t.clientX - joystick.startX; joystick.dy = t.clientY - joystick.startY; }
+        if (shootJoystick.active && t.identifier === shootJoystick.id) { shootJoystick.dx = t.clientX - shootJoystick.startX; shootJoystick.dy = t.clientY - shootJoystick.startY; }
     }
     e.preventDefault();
 }, { passive: false });
 
 canvas.addEventListener('touchend', e => {
     for (const t of e.changedTouches) {
-        delete activeTouches[t.identifier];
-        if (joystick.active && t.identifier === joystick.id) {
-            joystick.active = false; joystick.dx = 0; joystick.dy = 0;
-        }
-        if (shootJoystick.active && t.identifier === shootJoystick.id) {
-            shootJoystick.active = false; shootJoystick.dx = 0; shootJoystick.dy = 0;
-        }
+        if (joystick.active && t.identifier === joystick.id) { joystick.active = false; joystick.dx = 0; joystick.dy = 0; }
+        if (shootJoystick.active && t.identifier === shootJoystick.id) { shootJoystick.active = false; shootJoystick.dx = 0; shootJoystick.dy = 0; }
     }
     e.preventDefault();
 }, { passive: false });
 
-// Mouse/click for start
 canvas.addEventListener('click', e => {
-    if (state === 'menu' || state === 'dead') {
-        const bx = W / 2 - 100, by = state === 'menu' ? H / 2 - 5 : H / 2 + 30;
-        if (e.clientX > bx && e.clientX < bx + 200 && e.clientY > by && e.clientY < by + 55) {
-            initGame();
+    const mx = e.clientX, my = e.clientY;
+    if (state === 'menu') { const by = H / 2 - 15; if (mx > W / 2 - 100 && mx < W / 2 + 100 && my > by && my < by + 55) initGame(); }
+    if (state === 'dead') { const by = H / 2 + 20; if (mx > W / 2 - 100 && mx < W / 2 + 100 && my > by && my < by + 55) initGame(); }
+    if (state === 'upgrade') {
+        const cardW = Math.min(180, (W - 80) / 3);
+        const cardH = 140;
+        const startX = W / 2 - (cardW * 3 + 20 * 2) / 2;
+        const cardY = H / 2 - 50;
+        for (let i = 0; i < 3; i++) {
+            const cx = startX + i * (cardW + 20);
+            if (mx > cx && mx < cx + cardW && my > cardY && my < cardY + cardH) { selectUpgrade(i); break; }
         }
     }
 });
@@ -740,9 +664,9 @@ function gameLoop() {
 
 // Start
 state = 'menu';
-player = { x: W/2, y: H/2, hp: 10, maxHp: 10, shootCooldown: 0, speedBoost: 0, rapidFire: 0, invincible: 0, angle: 0 };
+player = { x: W/2, y: H/2, hp: 10, maxHp: 10, speed: 4, regen: 0, invincible: 0, angle: 0, weapon: { damage: 1, cooldown: 8, bullets: 1, spread: 0.1, pierce: 0, bulletSize: 4, range: 60, timer: 0 } };
 zombies = []; bullets = []; particles = []; drops = [];
-score = 0; wave = 0;
+score = 0; wave = 0; xp = 0; xpNeeded = 20;
 requestAnimationFrame(gameLoop);
 </script>
 </body>
