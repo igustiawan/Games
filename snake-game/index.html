@@ -2,13 +2,21 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ular Lapar! - Game Seru untuk Anak-anak</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
         }
 
         body {
@@ -16,53 +24,59 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             min-height: 100vh;
-            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
-            overflow: hidden;
+            min-height: 100dvh;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', -apple-system, cursive;
+            padding: 10px;
+            padding-top: env(safe-area-inset-top, 10px);
         }
 
         .game-title {
             color: #fff;
-            font-size: 2.5em;
+            font-size: clamp(1.5em, 5vw, 2.5em);
             text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             animation: bounce 2s infinite;
         }
 
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            50% { transform: translateY(-5px); }
         }
 
         .score-board {
             display: flex;
-            gap: 30px;
-            margin-bottom: 15px;
+            gap: 15px;
+            margin-bottom: 10px;
         }
 
         .score-item {
             background: rgba(255,255,255,0.2);
             backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 10px 25px;
+            border-radius: 12px;
+            padding: 8px 16px;
             color: white;
-            font-size: 1.3em;
+            font-size: clamp(0.9em, 3vw, 1.3em);
             font-weight: bold;
             border: 2px solid rgba(255,255,255,0.3);
         }
 
         .game-container {
             position: relative;
-            border-radius: 20px;
+            border-radius: 15px;
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            border: 4px solid rgba(255,255,255,0.4);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border: 3px solid rgba(255,255,255,0.4);
+            width: min(85vw, 85vh - 250px, 400px);
+            height: min(85vw, 85vh - 250px, 400px);
         }
 
         canvas {
             display: block;
             background: #1a1a2e;
+            width: 100%;
+            height: 100%;
         }
 
         .overlay {
@@ -75,9 +89,10 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.75);
             backdrop-filter: blur(5px);
             z-index: 10;
+            padding: 20px;
         }
 
         .overlay.hidden {
@@ -86,15 +101,16 @@
 
         .overlay h2 {
             color: #fff;
-            font-size: 2em;
-            margin-bottom: 15px;
+            font-size: clamp(1.5em, 5vw, 2em);
+            margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
 
         .overlay p {
             color: #ddd;
-            font-size: 1.2em;
-            margin-bottom: 25px;
+            font-size: clamp(0.9em, 3vw, 1.2em);
+            margin-bottom: 20px;
+            text-align: center;
         }
 
         .btn {
@@ -102,17 +118,14 @@
             color: white;
             border: none;
             padding: 15px 40px;
-            font-size: 1.3em;
+            font-size: clamp(1.1em, 4vw, 1.3em);
             font-family: inherit;
             border-radius: 50px;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
             box-shadow: 0 5px 20px rgba(240, 87, 108, 0.4);
-        }
-
-        .btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 8px 30px rgba(240, 87, 108, 0.6);
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .btn:active {
@@ -121,43 +134,51 @@
 
         .controls-info {
             color: rgba(255,255,255,0.7);
-            margin-top: 15px;
-            font-size: 1em;
+            margin-top: 8px;
+            font-size: 0.85em;
             text-align: center;
         }
 
+        /* Mobile D-Pad - ALWAYS visible on touch devices */
         .mobile-controls {
             display: none;
-            margin-top: 15px;
-            gap: 5px;
+            margin-top: 12px;
         }
 
         .d-pad {
             display: grid;
+            grid-template-columns: 70px 70px 70px;
+            grid-template-rows: 70px 70px 70px;
             grid-template-areas:
                 ". up ."
                 "left . right"
                 ". down .";
-            gap: 5px;
+            gap: 6px;
+            justify-content: center;
         }
 
         .d-pad button {
-            width: 60px;
-            height: 60px;
-            border-radius: 15px;
-            border: none;
-            background: rgba(255,255,255,0.2);
+            width: 70px;
+            height: 70px;
+            border-radius: 18px;
+            border: 3px solid rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.25);
             backdrop-filter: blur(10px);
             color: white;
-            font-size: 1.8em;
+            font-size: 2em;
             cursor: pointer;
-            transition: background 0.1s;
-            border: 2px solid rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-user-select: none;
+            user-select: none;
+            transition: background 0.1s, transform 0.1s;
         }
 
-        .d-pad button:active {
-            background: rgba(255,255,255,0.4);
+        .d-pad button:active, .d-pad button.pressed {
+            background: rgba(255,255,255,0.5);
             transform: scale(0.9);
+            border-color: rgba(255,255,255,0.8);
         }
 
         .d-pad .up { grid-area: up; }
@@ -165,15 +186,67 @@
         .d-pad .left { grid-area: left; }
         .d-pad .right { grid-area: right; }
 
-        @media (max-width: 600px) {
-            .game-title { font-size: 1.8em; }
-            .score-item { font-size: 1em; padding: 8px 15px; }
-            .mobile-controls { display: block; }
-            canvas { width: 320px; height: 320px; }
+        /* Show mobile controls on touch devices */
+        @media (pointer: coarse), (max-width: 768px) {
+            .mobile-controls {
+                display: block;
+            }
+            .controls-info {
+                display: none;
+            }
+            body {
+                justify-content: flex-start;
+                padding-top: 15px;
+            }
+            .game-title {
+                margin-bottom: 5px;
+            }
+            .score-board {
+                margin-bottom: 8px;
+            }
         }
 
-        .emoji-food {
-            font-size: 20px;
+        /* Very small phones */
+        @media (max-height: 600px) {
+            .game-title { font-size: 1.3em; margin-bottom: 3px; }
+            .score-item { padding: 5px 12px; font-size: 0.85em; }
+            .score-board { margin-bottom: 5px; gap: 10px; }
+            .game-container {
+                width: min(60vw, 45vh, 280px);
+                height: min(60vw, 45vh, 280px);
+            }
+            .d-pad button { width: 55px; height: 55px; font-size: 1.5em; }
+            .d-pad {
+                grid-template-columns: 55px 55px 55px;
+                grid-template-rows: 55px 55px 55px;
+                gap: 4px;
+            }
+        }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            body {
+                flex-direction: row;
+                justify-content: center;
+                gap: 20px;
+                padding: 5px 20px;
+            }
+            .game-title { display: none; }
+            .score-board { 
+                position: absolute; 
+                top: 5px; 
+                left: 50%;
+                transform: translateX(-50%);
+            }
+            .game-container {
+                width: min(80vh, 300px);
+                height: min(80vh, 300px);
+            }
+            .d-pad button { width: 50px; height: 50px; font-size: 1.4em; }
+            .d-pad {
+                grid-template-columns: 50px 50px 50px;
+                grid-template-rows: 50px 50px 50px;
+            }
         }
     </style>
 </head>
@@ -215,6 +288,11 @@
     </div>
 
     <script>
+        // Prevent all default touch behaviors (no zoom, no scroll)
+        document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        document.addEventListener('gesturestart', (e) => e.preventDefault());
+        document.addEventListener('gesturechange', (e) => e.preventDefault());
+
         // Game Configuration
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -229,7 +307,7 @@
         let score = 0;
         let highScore = localStorage.getItem('snakeHighScore') || 0;
         let gameLoop = null;
-        let gameSpeed = 150; // milliseconds - slower for kids
+        let gameSpeed = 150;
         let isGameRunning = false;
 
         // Colors for the snake body (rainbow!)
@@ -258,6 +336,7 @@
 
         // Keyboard Controls
         document.addEventListener('keydown', (e) => {
+            if (!isGameRunning) return;
             switch(e.key) {
                 case 'ArrowUp': case 'w': case 'W':
                     if (direction.y !== 1) nextDirection = { x: 0, y: -1 };
@@ -275,42 +354,61 @@
             e.preventDefault();
         });
 
-        // Mobile Controls
-        document.getElementById('btnUp').addEventListener('click', () => {
-            if (direction.y !== 1) nextDirection = { x: 0, y: -1 };
-        });
-        document.getElementById('btnDown').addEventListener('click', () => {
-            if (direction.y !== -1) nextDirection = { x: 0, y: 1 };
-        });
-        document.getElementById('btnLeft').addEventListener('click', () => {
-            if (direction.x !== 1) nextDirection = { x: -1, y: 0 };
-        });
-        document.getElementById('btnRight').addEventListener('click', () => {
-            if (direction.x !== -1) nextDirection = { x: 1, y: 0 };
-        });
+        // Mobile D-Pad Controls - using touchstart for instant response
+        function setupDPadButton(id, dirCheck, newDir) {
+            const btn = document.getElementById(id);
+            
+            const handlePress = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!isGameRunning) return;
+                if (dirCheck()) {
+                    nextDirection = newDir;
+                }
+                btn.classList.add('pressed');
+                setTimeout(() => btn.classList.remove('pressed'), 150);
+            };
 
-        // Touch swipe support
+            btn.addEventListener('touchstart', handlePress, { passive: false });
+            btn.addEventListener('mousedown', handlePress);
+        }
+
+        setupDPadButton('btnUp', () => direction.y !== 1, { x: 0, y: -1 });
+        setupDPadButton('btnDown', () => direction.y !== -1, { x: 0, y: 1 });
+        setupDPadButton('btnLeft', () => direction.x !== 1, { x: -1, y: 0 });
+        setupDPadButton('btnRight', () => direction.x !== -1, { x: 1, y: 0 });
+
+        // Touch swipe support on game canvas
         let touchStartX = 0;
         let touchStartY = 0;
+        let touchStartTime = 0;
+
         canvas.addEventListener('touchstart', (e) => {
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
             e.preventDefault();
-        });
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-        });
+        }, { passive: false });
+
         canvas.addEventListener('touchend', (e) => {
+            if (!isGameRunning) return;
             const dx = e.changedTouches[0].clientX - touchStartX;
             const dy = e.changedTouches[0].clientY - touchStartY;
-            if (Math.abs(dx) > Math.abs(dy)) {
-                if (dx > 30 && direction.x !== -1) nextDirection = { x: 1, y: 0 };
-                else if (dx < -30 && direction.x !== 1) nextDirection = { x: -1, y: 0 };
-            } else {
-                if (dy > 30 && direction.y !== -1) nextDirection = { x: 0, y: 1 };
-                else if (dy < -30 && direction.y !== 1) nextDirection = { x: 0, y: -1 };
+            const elapsed = Date.now() - touchStartTime;
+            
+            // Only register swipe if it's fast enough and long enough
+            const minSwipe = 20;
+            if (elapsed < 500 && (Math.abs(dx) > minSwipe || Math.abs(dy) > minSwipe)) {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    if (dx > 0 && direction.x !== -1) nextDirection = { x: 1, y: 0 };
+                    else if (dx < 0 && direction.x !== 1) nextDirection = { x: -1, y: 0 };
+                } else {
+                    if (dy > 0 && direction.y !== -1) nextDirection = { x: 0, y: 1 };
+                    else if (dy < 0 && direction.y !== 1) nextDirection = { x: 0, y: -1 };
+                }
             }
-        });
+            e.preventDefault();
+        }, { passive: false });
 
         function startGame() {
             // Reset game state
@@ -383,7 +481,7 @@
                 placeFood();
 
                 // Speed up slightly (but not too fast for kids)
-                if (gameSpeed > 80) {
+                if (gameSpeed > 90) {
                     gameSpeed -= 2;
                     clearInterval(gameLoop);
                     gameLoop = setInterval(update, gameSpeed);
@@ -444,22 +542,22 @@
                     ctx.fillStyle = 'white';
                     let eyeX1, eyeY1, eyeX2, eyeY2;
                     
-                    if (direction.x === 1) { // right
+                    if (direction.x === 1) {
                         eyeX1 = segment.x * gridSize + 13;
                         eyeY1 = segment.y * gridSize + 5;
                         eyeX2 = segment.x * gridSize + 13;
                         eyeY2 = segment.y * gridSize + 13;
-                    } else if (direction.x === -1) { // left
+                    } else if (direction.x === -1) {
                         eyeX1 = segment.x * gridSize + 5;
                         eyeY1 = segment.y * gridSize + 5;
                         eyeX2 = segment.x * gridSize + 5;
                         eyeY2 = segment.y * gridSize + 13;
-                    } else if (direction.y === -1) { // up
+                    } else if (direction.y === -1) {
                         eyeX1 = segment.x * gridSize + 5;
                         eyeY1 = segment.y * gridSize + 5;
                         eyeX2 = segment.x * gridSize + 13;
                         eyeY2 = segment.y * gridSize + 5;
-                    } else { // down
+                    } else {
                         eyeX1 = segment.x * gridSize + 5;
                         eyeY1 = segment.y * gridSize + 13;
                         eyeX2 = segment.x * gridSize + 13;
@@ -512,6 +610,11 @@
             isGameRunning = false;
             clearInterval(gameLoop);
 
+            // Vibrate on game over (mobile feedback)
+            if (navigator.vibrate) {
+                navigator.vibrate(200);
+            }
+
             // Update high score
             if (score > highScore) {
                 highScore = score;
@@ -529,7 +632,6 @@
             ctx.fillStyle = '#1a1a2e';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw a cute snake preview
             const previewSnake = [
                 {x: 12, y: 10}, {x: 11, y: 10}, {x: 10, y: 10},
                 {x: 9, y: 10}, {x: 8, y: 10}
