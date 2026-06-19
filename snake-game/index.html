@@ -28,7 +28,7 @@ const SEG_DIST = 12; // distance between segments
 const BASE_SPEED = 3;
 const BOOST_SPEED = 5;
 const FOOD_COUNT = 200;
-const AI_COUNT = 8;
+const AI_COUNT = 10;
 const TURN_SPEED = 0.06;
 const AI_TURN_SPEED = 0.04;
 
@@ -43,9 +43,18 @@ const SNAKE_COLORS = [
     ['#69f0ae','#00e676','#69f0ae'],
     ['#ea80fc','#aa00ff','#ea80fc'],
     ['#ffd740','#ffc400','#ffd740'],
+    ['#80deea','#00acc1','#80deea'],
+    ['#f48fb1','#ec407a','#f48fb1'],
 ];
 
-let state = 'menu';
+const SKIN_NAMES = [
+    'Hijau Neon', 'Merah Api', 'Biru Langit', 'Kuning Emas', 'Ungu Magic',
+    'Oranye Sunset', 'Tosca Fresh', 'Pink Galaxy', 'Gold Mewah', 'Biru Laut', 'Rose Cantik'
+];
+
+let selectedSkin = parseInt(localStorage.getItem('snakeSkin') || '0');
+
+let state = 'menu'; // menu, skin, playing, dead
 let player, aiSnakes, foods, particles;
 let camera = { x: 0, y: 0 };
 let score, highScore;
@@ -175,11 +184,33 @@ function moveSnake(snake) {
         y: head.y + Math.sin(snake.angle) * snake.speed
     };
 
-    // Wrap around map (no death on wall)
-    if (newHead.x < 0) newHead.x += MAP_W;
-    if (newHead.x > MAP_W) newHead.x -= MAP_W;
-    if (newHead.y < 0) newHead.y += MAP_H;
-    if (newHead.y > MAP_H) newHead.y -= MAP_H;
+    // Wall collision = DEATH
+    if (newHead.x < 0 || newHead.x > MAP_W || newHead.y < 0 || newHead.y > MAP_H) {
+        if (snake.isPlayer) {
+            snake.alive = false;
+            state = 'dead';
+            if (score > highScore) { highScore = score; localStorage.setItem('snakeArenaHS', highScore); }
+            if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
+            for (let i = 0; i < 20; i++) particles.push({ x: head.x, y: head.y, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, life: 1, color: snake.colors[0], size: 5 });
+            // Drop food
+            const dropCount = Math.min(snake.segments.length, 40);
+            for (let i = 0; i < dropCount; i++) {
+                const seg = snake.segments[Math.floor(i * snake.segments.length / dropCount)];
+                spawnFoodAt(seg.x, seg.y, 1);
+            }
+            return;
+        } else {
+            // AI dies on wall, respawn
+            snake.alive = false;
+            const dropCount = Math.min(snake.segments.length, 30);
+            for (let i = 0; i < dropCount; i++) {
+                const seg = snake.segments[Math.floor(i * snake.segments.length / dropCount)];
+                spawnFoodAt(seg.x, seg.y, 1);
+            }
+            setTimeout(() => respawnAI(snake), 3000);
+            return;
+        }
+    }
 
     snake.segments.unshift(newHead);
 
@@ -305,7 +336,7 @@ function respawnAI(snake) {
 
 // ===== INIT =====
 function initGame() {
-    player = createSnake(MAP_W / 2, MAP_H / 2, 20, SNAKE_COLORS[0], true);
+    player = createSnake(MAP_W / 2, MAP_H / 2, 20, SNAKE_COLORS[selectedSkin], true);
     aiSnakes = [];
     for (let i = 0; i < AI_COUNT; i++) {
         const x = Math.random() * MAP_W;
@@ -429,6 +460,7 @@ function draw() {
     // HUD
     drawHUD();
     if (state === 'menu') drawMenu();
+    if (state === 'skin') drawSkinSelect();
     if (state === 'dead') drawDead();
 }
 
@@ -542,20 +574,93 @@ function drawMenu() {
     ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#00e676'; ctx.font = 'bold 44px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.shadowColor = '#00e676'; ctx.shadowBlur = 20;
-    ctx.fillText('SNAKE ARENA', W / 2, H / 2 - 100);
+    ctx.fillText('SNAKE ARENA', W / 2, H / 2 - 120);
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#aaa'; ctx.font = '16px sans-serif';
-    ctx.fillText('Makan ular lain yang lebih kecil!', W / 2, H / 2 - 55);
+    ctx.fillText('Makan ular lain yang lebih kecil!', W / 2, H / 2 - 75);
     ctx.fillStyle = '#666'; ctx.font = '13px sans-serif';
-    ctx.fillText('Ular lebih besar = BAHAYA! Ular lebih kecil = MAKAN!', W / 2, H / 2 - 30);
+    ctx.fillText('Nabrak dinding = MATI! Ular lebih kecil = MAKAN!', W / 2, H / 2 - 50);
+
+    // Skin preview
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; roundRect(W / 2 - 80, H / 2 - 38, 160, 30, 10); ctx.fill();
+    ctx.fillStyle = SNAKE_COLORS[selectedSkin][0]; ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('Skin: ' + SKIN_NAMES[selectedSkin], W / 2, H / 2 - 23);
+
     // Start btn
     ctx.shadowColor = '#00e676'; ctx.shadowBlur = 15; ctx.fillStyle = '#00e676';
-    roundRect(W / 2 - 100, H / 2 - 5, 200, 55, 28); ctx.fill(); ctx.shadowBlur = 0;
-    ctx.fillStyle = '#000'; ctx.font = 'bold 22px sans-serif';
-    ctx.fillText('MAIN!', W / 2, H / 2 + 22);
-    ctx.fillStyle = '#555'; ctx.font = '13px sans-serif';
-    ctx.fillText('Mouse/Swipe = arah | Hold/2 jari = boost', W / 2, H / 2 + 75);
-    if (highScore > 0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 14px sans-serif'; ctx.fillText('Best: ' + highScore, W / 2, H / 2 + 110); }
+    roundRect(W / 2 - 100, H / 2 + 0, 200, 50, 28); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#000'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('MAIN!', W / 2, H / 2 + 25);
+
+    // Skin button
+    ctx.shadowColor = '#e040fb'; ctx.shadowBlur = 10; ctx.fillStyle = '#e040fb';
+    roundRect(W / 2 - 100, H / 2 + 65, 200, 45, 22); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 16px sans-serif';
+    ctx.fillText('PILIH SKIN', W / 2, H / 2 + 88);
+
+    ctx.fillStyle = '#555'; ctx.font = '12px sans-serif';
+    ctx.fillText('Mouse/Swipe = arah | Hold/2 jari = boost', W / 2, H / 2 + 130);
+    if (highScore > 0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 14px sans-serif'; ctx.fillText('Best: ' + highScore, W / 2, H / 2 + 155); }
+}
+
+function drawSkinSelect() {
+    ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#e040fb'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('PILIH SKIN', W / 2, 60);
+
+    // Grid of skins
+    const cols = Math.min(4, Math.floor((W - 40) / 140));
+    const rows = Math.ceil(SNAKE_COLORS.length / cols);
+    const cellW = 130, cellH = 90;
+    const startX = W / 2 - (cols * cellW) / 2;
+    const startY = 110;
+
+    SNAKE_COLORS.forEach((colors, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const cx = startX + col * cellW + cellW / 2;
+        const cy = startY + row * (cellH + 10) + cellH / 2;
+
+        // Card bg
+        const isSelected = i === selectedSkin;
+        ctx.fillStyle = isSelected ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)';
+        ctx.strokeStyle = isSelected ? colors[0] : 'rgba(255,255,255,0.1)';
+        ctx.lineWidth = isSelected ? 3 : 1;
+        roundRect(cx - cellW / 2 + 5, cy - cellH / 2, cellW - 10, cellH, 12);
+        ctx.fill(); ctx.stroke();
+
+        // Snake preview (5 circles)
+        for (let j = 4; j >= 0; j--) {
+            const sx = cx - 20 + j * 10;
+            const sy = cy - 8;
+            const r = j === 0 ? 10 : 7;
+            ctx.fillStyle = colors[j % colors.length];
+            if (j === 0) { ctx.shadowColor = colors[0]; ctx.shadowBlur = 10; }
+            ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        // Eyes on head
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(cx - 20 + 3, cy - 12, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx - 20 + 3, cy - 4, 3, 0, Math.PI * 2); ctx.fill();
+
+        // Name
+        ctx.fillStyle = '#aaa'; ctx.font = '11px sans-serif';
+        ctx.fillText(SKIN_NAMES[i], cx, cy + 30);
+
+        // Selected indicator
+        if (isSelected) {
+            ctx.fillStyle = colors[0]; ctx.font = 'bold 10px sans-serif';
+            ctx.fillText('TERPILIH', cx, cy + 42);
+        }
+    });
+
+    // Back button
+    ctx.shadowColor = '#00e676'; ctx.shadowBlur = 10; ctx.fillStyle = '#00e676';
+    const btnY = startY + rows * (cellH + 10) + 20;
+    roundRect(W / 2 - 80, btnY, 160, 45, 22); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#000'; ctx.font = 'bold 18px sans-serif';
+    ctx.fillText('OKE!', W / 2, btnY + 22);
 }
 
 function drawDead() {
@@ -593,8 +698,15 @@ canvas.addEventListener('mouseup', e => { boosting = false; });
 // Touch joystick
 canvas.addEventListener('touchstart', e => {
     const t = e.touches[0];
-    if (state === 'menu' || state === 'dead') {
-        const by = state === 'menu' ? H / 2 - 5 : H / 2 + 25;
+    if (state === 'menu') {
+        // Start btn
+        if (t.clientX > W / 2 - 100 && t.clientX < W / 2 + 100 && t.clientY > H / 2 && t.clientY < H / 2 + 50) { initGame(); }
+        // Skin btn
+        else if (t.clientX > W / 2 - 100 && t.clientX < W / 2 + 100 && t.clientY > H / 2 + 65 && t.clientY < H / 2 + 110) { state = 'skin'; }
+    } else if (state === 'skin') {
+        handleSkinClick(t.clientX, t.clientY);
+    } else if (state === 'dead') {
+        const by = H / 2 + 25;
         if (t.clientX > W / 2 - 100 && t.clientX < W / 2 + 100 && t.clientY > by && t.clientY < by + 55) { initGame(); }
     } else {
         joystick.active = true; joystick.startX = t.clientX; joystick.startY = t.clientY;
@@ -624,9 +736,39 @@ canvas.addEventListener('touchend', e => {
 
 // Click for menu
 canvas.addEventListener('click', e => {
-    if (state === 'menu') { const by = H / 2 - 5; if (e.clientX > W / 2 - 100 && e.clientX < W / 2 + 100 && e.clientY > by && e.clientY < by + 55) initGame(); }
+    if (state === 'menu') {
+        if (e.clientX > W / 2 - 100 && e.clientX < W / 2 + 100 && e.clientY > H / 2 && e.clientY < H / 2 + 50) initGame();
+        else if (e.clientX > W / 2 - 100 && e.clientX < W / 2 + 100 && e.clientY > H / 2 + 65 && e.clientY < H / 2 + 110) { state = 'skin'; }
+    }
+    if (state === 'skin') { handleSkinClick(e.clientX, e.clientY); }
     if (state === 'dead') { const by = H / 2 + 25; if (e.clientX > W / 2 - 100 && e.clientX < W / 2 + 100 && e.clientY > by && e.clientY < by + 55) initGame(); }
 });
+
+function handleSkinClick(mx, my) {
+    const cols = Math.min(4, Math.floor((W - 40) / 140));
+    const rows = Math.ceil(SNAKE_COLORS.length / cols);
+    const cellW = 130, cellH = 90;
+    const startX = W / 2 - (cols * cellW) / 2;
+    const startY = 110;
+
+    // Check skin cards
+    SNAKE_COLORS.forEach((colors, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const cx = startX + col * cellW + cellW / 2;
+        const cy = startY + row * (cellH + 10) + cellH / 2;
+        if (mx > cx - cellW / 2 + 5 && mx < cx + cellW / 2 - 5 && my > cy - cellH / 2 && my < cy + cellH / 2) {
+            selectedSkin = i;
+            localStorage.setItem('snakeSkin', i);
+        }
+    });
+
+    // Check OKE button
+    const btnY = startY + rows * (cellH + 10) + 20;
+    if (mx > W / 2 - 80 && mx < W / 2 + 80 && my > btnY && my < btnY + 45) {
+        state = 'menu';
+    }
+}
 
 // ===== GAME LOOP =====
 function gameLoop() {
