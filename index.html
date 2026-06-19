@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Arena!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #1b1040;
             min-height: 100vh;
-            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif;
+            font-family: 'Nunito', 'Poppins', -apple-system, sans-serif;
             overflow-x: hidden;
         }
 
@@ -68,18 +69,17 @@
 
         /* Games container */
         .games {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 25px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
             padding: 20px 20px 60px;
-            max-width: 1000px;
+            max-width: 520px;
             margin: 0 auto;
         }
 
         /* Game card */
         .card {
-            width: 220px;
+            width: 100%;
             background: rgba(255,255,255,0.08);
             border-radius: 20px;
             overflow: hidden;
@@ -95,6 +95,25 @@
         }
         .card:active {
             transform: scale(0.97);
+        }
+        .card.coming-soon {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .card.coming-soon .card-top::after {
+            content: 'COMING SOON';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #fff;
+            background: rgba(0,0,0,0.6);
+            padding: 6px 14px;
+            border-radius: 8px;
+            z-index: 2;
+            letter-spacing: 1px;
         }
 
         .card-top {
@@ -190,8 +209,7 @@
         .footer a { color: rgba(255,255,255,0.4); text-decoration: none; }
 
         @media (max-width: 640px) {
-            .card { width: 100%; max-width: 250px; }
-            .games { padding: 10px 15px 40px; gap: 15px; }
+            .games { max-width: 100%; padding: 10px 15px 40px; gap: 12px; }
         }
     </style>
 </head>
@@ -227,7 +245,7 @@
             </div>
             <div class="card-body">
                 <h2 class="card-title">Snake Arena</h2>
-                <p class="card-desc">Jadi ular paling gede! Makan ular lain, pilih skin naga keren, hati-hati dinding!</p>
+                <p class="card-desc">Jadi ular paling gede! Makan ular lain, pilih skin naga!</p>
                 <div class="card-tags">
                     <span class="tag">Slither.io</span>
                     <span class="tag">10 Bot</span>
@@ -244,7 +262,7 @@
             </div>
             <div class="card-body">
                 <h2 class="card-title">Zombie Survival</h2>
-                <p class="card-desc">Tembak zombie, upgrade senjata, lawan BOSS gede tiap 5 wave! Bisa berapa lama?</p>
+                <p class="card-desc">Tembak zombie, upgrade senjata, lawan BOSS!</p>
                 <div class="card-tags">
                     <span class="tag">Shooter</span>
                     <span class="tag">Boss Fight</span>
@@ -261,14 +279,27 @@
             </div>
             <div class="card-body">
                 <h2 class="card-title">Dino Run!</h2>
-                <p class="card-desc">Lari terus! Lompatin musuh ala Mario, kumpulin koin, 3 nyawa biar santai!</p>
+                <p class="card-desc">Lompatin musuh ala Mario, kumpulin koin!</p>
                 <div class="card-tags">
                     <span class="tag">Endless Run</span>
-                    <span class="tag">Mario Style</span>
-                    <span class="tag">Coins</span>
+                    <span class="tag">Mario</span>
                 </div>
             </div>
         </a>
+
+        <!-- Coming Soon -->
+        <div class="card coming-soon" style="--c: #64748b; --bg: linear-gradient(135deg, #475569, #1e293b);">
+            <div class="card-top">
+                <div class="card-icon">🎮</div>
+            </div>
+            <div class="card-body">
+                <h2 class="card-title">???</h2>
+                <p class="card-desc">Game baru segera hadir!</p>
+                <div class="card-tags">
+                    <span class="tag">Coming Soon</span>
+                </div>
+            </div>
+        </div>
     </main>
 
     <footer class="footer">
