@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Suika Fruit!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; background: #1a0a2e; }
+        body { display: flex; align-items: center; justify-content: center; font-family: 'Nunito', sans-serif; min-height: 100dvh; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+</script>
+</body>
+</html>
+
+
+
+// ===== CONFIG =====
+const GRAVITY = 0.35;
+const BOUNCE = 0.4;
+const FRICTION = 0.99;
+const WALL_BOUNCE = 0.3;
+
+// Fruit evolution chain (small → big)
+const FRUITS = [
+    { name: 'Cherry', radius: 15, color: '#ff1744', inner: '#d50000', emoji: '🍒', points: 1 },
+    { name: 'Strawberry', radius: 20, color: '#ff5252', inner: '#c62828', emoji: '🍓', points: 3 },
+    { name: 'Grape', radius: 25, color: '#9c27b0', inner: '#6a1b9a', emoji: '🍇', points: 6 },
+    { name: 'Orange', radius: 32, color: '#ff9800', inner: '#e65100', emoji: '🍊', points: 10 },
+    { name: 'Apple', radius: 38, color: '#f44336', inner: '#b71c1c', emoji: '🍎', points: 15 },
+    { name: 'Pear', radius: 45, color: '#8bc34a', inner: '#33691e', emoji: '🍐', points: 21 },
+    { name: 'Peach', radius: 52, color: '#ff7043', inner: '#bf360c', emoji: '🍑', points: 28 },
+    { name: 'Pineapple', radius: 60, color: '#ffc107', inner: '#ff6f00', emoji: '🍍', points: 36 },
+    { name: 'Melon', radius: 68, color: '#66bb6a', inner: '#2e7d32', emoji: '🍈', points: 45 },
+    { name: 'Watermelon', radius: 78, color: '#4caf50', inner: '#1b5e20', emoji: '🍉', points: 55 },
+];
+
+// Container
+let containerW, containerH, containerX, containerY;
+function calcContainer() {
+    containerW = Math.min(380, W - 40);
+    containerH = Math.min(550, H - 160);
+    containerX = W / 2 - containerW / 2;
+    containerY = H - containerH - 40;
+}
+calcContainer();
+window.addEventListener('resize', () => { resize(); calcContainer(); });
+
+let state = 'menu';
+let fruits = [];
+let nextFruit, currentFruit;
+let dropX;
+let score, highScore;
+let particles = [];
+let animFrame = 0;
+let canDrop = true;
+let gameOverTimer = 0;
+let mergeFlash = [];
+
+highScore = parseInt(localStorage.getItem('suikaHS') || '0');
+
+// ===== PHYSICS =====
+function createFruit(level, x, y, vx, vy) {
+    const type = FRUITS[level];
+    return {
+        x, y, vx: vx || 0, vy: vy || 0,
+        radius: type.radius,
+        level,
+        color: type.color,
+        inner: type.inner,
+        emoji: type.emoji,
+        points: type.points,
+        settled: false,
+        flash: 0
+    };
+}
+
+function updatePhysics() {
+    const bottom = containerY + containerH;
+    const left = containerX;
+    const right = containerX + containerW;
+
+    fruits.forEach(f => {
+        if (f.settled && f.vy === 0 && f.vx === 0) return;
+
+        // Gravity
+        f.vy += GRAVITY;
+        f.vx *= FRICTION;
+        f.x += f.vx;
+        f.y += f.vy;
+
+        // Floor
+        if (f.y + f.radius > bottom) {
+            f.y = bottom - f.radius;
+            f.vy *= -BOUNCE;
+            if (Math.abs(f.vy) < 0.5) { f.vy = 0; f.settled = true; }
+        }
+        // Walls
+        if (f.x - f.radius < left) {
+            f.x = left + f.radius;
+            f.vx *= -WALL_BOUNCE;
+        }
+        if (f.x + f.radius > right) {
+            f.x = right - f.radius;
+            f.vx *= -WALL_BOUNCE;
+        }
+
+        if (f.flash > 0) f.flash--;
+    });
+
+    // Fruit-to-fruit collision
+    for (let i = 0; i < fruits.length; i++) {
+        for (let j = i + 1; j < fruits.length; j++) {
+            const a = fruits[i], b = fruits[j];
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const dist = Math.hypot(dx, dy);
+            const minDist = a.radius + b.radius;
+
+            if (dist < minDist && dist > 0) {
+                // Separate
+                const overlap = (minDist - dist) / 2;
+                const nx = dx / dist, ny = dy / dist;
+                a.x -= nx * overlap;
+                a.y -= ny * overlap;
+                b.x += nx * overlap;
+                b.y += ny * overlap;
+
+                // Bounce
+                const relVx = a.vx - b.vx, relVy = a.vy - b.vy;
+                const dot = relVx * nx + relVy * ny;
+                if (dot > 0) {
+                    const impulse = dot * 0.5;
+                    a.vx -= impulse * nx;
+                    a.vy -= impulse * ny;
+                    b.vx += impulse * nx;
+                    b.vy += impulse * ny;
+                }
+            }
+        }
+    }
+}
+
+function checkMerge() {
+    for (let i = 0; i < fruits.length; i++) {
+        for (let j = i + 1; j < fruits.length; j++) {
+            const a = fruits[i], b = fruits[j];
+            if (a.level !== b.level) continue;
+            if (a.level >= FRUITS.length - 1) continue; // Max level
+
+            const dist = Math.hypot(b.x - a.x, b.y - a.y);
+            if (dist < a.radius + b.radius * 0.8) {
+                // MERGE!
+                const newLevel = a.level + 1;
+                const mx = (a.x + b.x) / 2;
+                const my = (a.y + b.y) / 2;
+                const newFruit = createFruit(newLevel, mx, my, 0, -2);
+                newFruit.flash = 15;
+
+                // Remove old, add new
+                fruits.splice(j, 1);
+                fruits.splice(i, 1);
+                fruits.push(newFruit);
+
+                // Score + particles
+                score += FRUITS[newLevel].points;
+                spawnParticles(mx, my, a.color, 12);
+                spawnParticles(mx, my, FRUITS[newLevel].color, 8);
+                mergeFlash.push({ x: mx, y: my, radius: FRUITS[newLevel].radius, life: 1 });
+
+                if (navigator.vibrate) navigator.vibrate(30);
+                return true; // Only one merge per frame
+            }
+        }
+    }
+    return false;
+}
+
+function checkGameOver() {
+    // If any fruit is above the line for too long
+    const line = containerY + 50;
+    const above = fruits.some(f => f.y - f.radius < line && f.settled);
+    if (above) {
+        gameOverTimer++;
+        if (gameOverTimer > 60) { // 1 second grace
+            state = 'dead';
+            if (score > highScore) { highScore = score; localStorage.setItem('suikaHS', highScore); }
+            if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
+        }
+    } else {
+        gameOverTimer = 0;
+    }
+}
+
+
+
+// ===== GAME LOGIC =====
+function initGame() {
+    fruits = [];
+    particles = [];
+    mergeFlash = [];
+    score = 0;
+    gameOverTimer = 0;
+    canDrop = true;
+    dropX = W / 2;
+    nextFruit = Math.floor(Math.random() * 4); // Only small fruits for next
+    currentFruit = Math.floor(Math.random() * 4);
+    state = 'playing';
+}
+
+function dropFruitAt(x) {
+    if (!canDrop) return;
+    // Clamp to container
+    const type = FRUITS[currentFruit];
+    x = Math.max(containerX + type.radius, Math.min(containerX + containerW - type.radius, x));
+    const fruit = createFruit(currentFruit, x, containerY + 30, 0, 0);
+    fruits.push(fruit);
+    canDrop = false;
+    // Next fruit after delay
+    setTimeout(() => {
+        currentFruit = nextFruit;
+        nextFruit = Math.floor(Math.random() * 4);
+        canDrop = true;
+    }, 500);
+}
+
+function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        particles.push({ x, y, vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8 - 2, life: 1, color, size: 3+Math.random()*4 });
+    }
+}
+
+// ===== DRAWING =====
+function draw() {
+    // Background
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#1a0a2e');
+    grad.addColorStop(1, '#2d1b4e');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+    animFrame++;
+
+    if (state === 'playing' || state === 'dead') {
+        // Container
+        ctx.fillStyle = 'rgba(255,255,255,0.03)';
+        ctx.fillRect(containerX, containerY, containerW, containerH);
+        // Walls
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(containerX, containerY);
+        ctx.lineTo(containerX, containerY + containerH);
+        ctx.lineTo(containerX + containerW, containerY + containerH);
+        ctx.lineTo(containerX + containerW, containerY);
+        ctx.stroke();
+        // Danger line
+        ctx.strokeStyle = 'rgba(255,50,50,0.3)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        ctx.moveTo(containerX, containerY + 50);
+        ctx.lineTo(containerX + containerW, containerY + 50);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Drop guide
+        if (canDrop && state === 'playing') {
+            const type = FRUITS[currentFruit];
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(dropX, containerY + 30);
+            ctx.lineTo(dropX, containerY + containerH);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // Preview fruit
+            ctx.globalAlpha = 0.7;
+            drawFruit(dropX, containerY + 30, type.radius, type.color, type.inner, type.emoji);
+            ctx.globalAlpha = 1;
+        }
+
+        // Merge flash effects
+        for (let i = mergeFlash.length - 1; i >= 0; i--) {
+            const m = mergeFlash[i];
+            ctx.globalAlpha = m.life * 0.5;
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(m.x, m.y, m.radius * (2 - m.life), 0, Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1;
+            m.life -= 0.04;
+            if (m.life <= 0) mergeFlash.splice(i, 1);
+        }
+
+        // Fruits
+        fruits.forEach(f => {
+            const scale = f.flash > 0 ? 1.1 : 1;
+            drawFruit(f.x, f.y, f.radius * scale, f.flash > 0 ? '#fff' : f.color, f.inner, f.emoji);
+        });
+
+        // Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 0.025;
+            ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI*2); ctx.fill();
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+        ctx.globalAlpha = 1;
+
+        // HUD
+        drawHUD();
+
+        // Next fruit preview
+        drawNextPreview();
+    }
+
+    if (state === 'menu') drawMenu();
+    if (state === 'dead') drawDead();
+}
+
+function drawFruit(x, y, radius, color, inner, emoji) {
+    // Outer circle
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI*2); ctx.fill();
+    // Inner circle (darker)
+    ctx.fillStyle = inner;
+    ctx.beginPath(); ctx.arc(x, y, radius * 0.7, 0, Math.PI*2); ctx.fill();
+    // Shine
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.beginPath(); ctx.arc(x - radius*0.25, y - radius*0.25, radius * 0.3, 0, Math.PI*2); ctx.fill();
+    // Emoji
+    ctx.font = `${Math.floor(radius * 0.9)}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, x, y + 1);
+}
+
+function drawNextPreview() {
+    const nx = containerX + containerW + 25;
+    const ny = containerY + 20;
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.beginPath(); ctx.arc(nx + 30, ny + 40, 35, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = 'bold 11px Nunito, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('NEXT', nx + 30, ny);
+    const type = FRUITS[nextFruit];
+    drawFruit(nx + 30, ny + 40, type.radius * 0.7, type.color, type.inner, type.emoji);
+}
+
+function drawHUD() {
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 18px Nunito, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('Skor: ' + score, containerX, containerY - 15);
+    ctx.fillStyle = '#ffd600'; ctx.font = 'bold 13px Nunito, sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText('Best: ' + highScore, containerX + containerW, containerY - 15);
+
+    // Evolution chain (bottom)
+    const chainY = containerY + containerH + 20;
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '9px Nunito, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Evolusi buah:', W/2, chainY);
+    const chainW = Math.min(containerW, FRUITS.length * 28);
+    const startX = W/2 - chainW/2;
+    FRUITS.forEach((f, i) => {
+        ctx.font = `${12}px sans-serif`;
+        ctx.fillText(f.emoji, startX + i * 28 + 14, chainY + 18);
+    });
+}
+
+
+
+function drawMenu() {
+    ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ff9800'; ctx.font = 'bold 40px Nunito, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#ff9800'; ctx.shadowBlur = 15;
+    ctx.fillText('SUIKA FRUIT!', W/2, H/2-110); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#aaa'; ctx.font = '14px Nunito, sans-serif';
+    ctx.fillText('Jatuhin buah, gabungin yang sama biar evolusi!', W/2, H/2-65);
+    ctx.fillStyle = '#888'; ctx.font = '12px Nunito, sans-serif';
+    ctx.fillText('🍒→🍓→🍇→🍊→🍎→🍐→🍑→🍍→🍈→🍉', W/2, H/2-40);
+    ctx.shadowColor = '#ff9800'; ctx.shadowBlur = 12; ctx.fillStyle = '#ff9800';
+    roundRect(W/2-100, H/2-5, 200, 55, 28); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#000'; ctx.font = 'bold 22px Nunito, sans-serif'; ctx.fillText('MAIN!', W/2, H/2+22);
+    ctx.fillStyle = '#555'; ctx.font = '12px Nunito, sans-serif';
+    ctx.fillText('Klik/Tap = jatuhin buah', W/2, H/2+70);
+    ctx.fillText('Geser = pindahin posisi', W/2, H/2+87);
+    if (highScore > 0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 14px Nunito, sans-serif'; ctx.fillText('Best: '+highScore, W/2, H/2+120); }
+}
+
+function drawDead() {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ff1744'; ctx.font = 'bold 36px Nunito, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('PENUH!', W/2, H/2-60);
+    ctx.fillStyle = '#fff'; ctx.font = '18px Nunito, sans-serif';
+    ctx.fillText('Skor: ' + score, W/2, H/2-20);
+    if (score >= highScore && score > 0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 14px Nunito, sans-serif'; ctx.fillText('REKOR BARU!', W/2, H/2+5); }
+    ctx.shadowColor = '#ff9800'; ctx.shadowBlur = 12; ctx.fillStyle = '#ff9800';
+    roundRect(W/2-100, H/2+25, 200, 50, 25); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#000'; ctx.font = 'bold 18px Nunito, sans-serif'; ctx.fillText('MAIN LAGI', W/2, H/2+50);
+}
+
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+
+// ===== INPUT =====
+canvas.addEventListener('mousemove', e => { if (state === 'playing') dropX = e.clientX; });
+canvas.addEventListener('click', e => {
+    if (state === 'menu') { if (e.clientX > W/2-100 && e.clientX < W/2+100 && e.clientY > H/2-5 && e.clientY < H/2+50) initGame(); }
+    else if (state === 'dead') { if (e.clientX > W/2-100 && e.clientX < W/2+100 && e.clientY > H/2+25 && e.clientY < H/2+75) initGame(); }
+    else if (state === 'playing') { dropFruitAt(e.clientX); }
+});
+
+canvas.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    if (state === 'menu') { if (t.clientX > W/2-100 && t.clientX < W/2+100 && t.clientY > H/2-5 && t.clientY < H/2+50) initGame(); }
+    else if (state === 'dead') { if (t.clientX > W/2-100 && t.clientX < W/2+100 && t.clientY > H/2+25 && t.clientY < H/2+75) initGame(); }
+    else if (state === 'playing') { dropX = t.clientX; }
+    e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    if (state === 'playing') dropX = e.touches[0].clientX;
+    e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+    if (state === 'playing') dropFruitAt(dropX);
+    e.preventDefault();
+}, { passive: false });
+
+// ===== GAME LOOP =====
+function gameLoop() {
+    requestAnimationFrame(gameLoop);
+    if (state === 'playing') {
+        updatePhysics();
+        checkMerge();
+        checkGameOver();
+    }
+    draw();
+}
+
+state = 'menu';
+score = 0; dropX = W/2;
+currentFruit = 0; nextFruit = 1;
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
