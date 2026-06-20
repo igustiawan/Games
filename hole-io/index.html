@@ -66,24 +66,24 @@ highScore = parseInt(localStorage.getItem('holeHS3') || '0');
 // ===== OBJECTS =====
 function genObjects() {
     objects = [];
-    // Fill city blocks with objects
     const blockSize = 200;
     for (let bx = 50; bx < MAP_W - 50; bx += blockSize) {
         for (let by = 50; by < MAP_H - 50; by += blockSize) {
-            const cx = bx + 30, cy = by + 30;
-            const bw = blockSize - 60, bh = blockSize - 60;
-            // Fill each block with stuff
-            const count = 4 + Math.floor(Math.random() * 4);
+            const cx = bx + 30, cy = by + 30, bw = blockSize - 60, bh = blockSize - 60;
+            const count = 5 + Math.floor(Math.random() * 5);
             for (let i = 0; i < count; i++) {
                 const ox = cx + Math.random() * bw;
                 const oy = cy + Math.random() * bh;
                 const r = Math.random();
-                if (r < 0.3) objects.push({ x: ox, y: oy, w: 8, h: 8, type: 'lamp', color: '#607d8b', size: 6 });
-                else if (r < 0.5) objects.push({ x: ox, y: oy, w: 14, h: 14, type: 'tree', color: '#388e3c', size: 12 });
-                else if (r < 0.65) objects.push({ x: ox, y: oy, w: 22, h: 12, type: 'car', color: ['#e53935','#1e88e5','#fdd835','#fff'][Math.floor(Math.random()*4)], size: 16 });
-                else if (r < 0.8) objects.push({ x: ox, y: oy, w: 30, h: 30, type: 'house', color: ['#ffab91','#80cbc4','#ce93d8','#fff59d'][Math.floor(Math.random()*4)], size: 28 });
-                else if (r < 0.92) objects.push({ x: ox, y: oy, w: 40, h: 40, type: 'building', color: ['#90a4ae','#b0bec5','#78909c'][Math.floor(Math.random()*3)], size: 38 });
-                else objects.push({ x: ox, y: oy, w: 50, h: 60, type: 'tower', color: '#546e7a', size: 50 });
+                if (r < 0.2) objects.push({ x:ox, y:oy, size:8, emoji:'🌱', type:'tiny' });
+                else if (r < 0.35) objects.push({ x:ox, y:oy, size:10, emoji:'🪨', type:'small' });
+                else if (r < 0.48) objects.push({ x:ox, y:oy, size:12, emoji:'🌳', type:'small' });
+                else if (r < 0.58) objects.push({ x:ox, y:oy, size:14, emoji:'🚶', type:'small' });
+                else if (r < 0.68) objects.push({ x:ox, y:oy, size:18, emoji:['🚗','🚙','🚕','🏎️'][Math.floor(Math.random()*4)], type:'medium' });
+                else if (r < 0.78) objects.push({ x:ox, y:oy, size:22, emoji:'🚌', type:'medium' });
+                else if (r < 0.86) objects.push({ x:ox, y:oy, size:30, emoji:['🏠','🏡','🏘️'][Math.floor(Math.random()*3)], type:'large' });
+                else if (r < 0.93) objects.push({ x:ox, y:oy, size:42, emoji:['🏢','🏬','🏨'][Math.floor(Math.random()*3)], type:'big' });
+                else objects.push({ x:ox, y:oy, size:55, emoji:['🏙️','🗼','⛪'][Math.floor(Math.random()*3)], type:'huge' });
             }
         }
     }
@@ -235,33 +235,34 @@ function update() {
 
 // ===== DRAW =====
 function draw() {
-    // Green background
-    ctx.fillStyle = COLORS.grass;
+    // Colorful gradient background
+    const g = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W);
+    g.addColorStop(0, '#8bc34a');
+    g.addColorStop(1, '#558b2f');
+    ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
     ctx.save();
     ctx.translate(-camera.x, -camera.y);
 
-    // Draw city blocks (grass squares with sidewalk border)
+    // City blocks (colorful tiles)
     const bs = 200;
+    const blockColors = ['#a5d6a7','#c5e1a5','#dcedc8','#b9f6ca'];
     for (let bx = 0; bx < MAP_W; bx += bs) {
         for (let by = 0; by < MAP_H; by += bs) {
-            // Sidewalk
-            ctx.fillStyle = COLORS.sidewalk;
-            ctx.fillRect(bx + 15, by + 15, bs - 30, bs - 30);
-            // Green center
-            ctx.fillStyle = COLORS.block;
-            ctx.fillRect(bx + 22, by + 22, bs - 44, bs - 44);
+            const ci = ((bx/bs) + (by/bs)) % blockColors.length;
+            ctx.fillStyle = blockColors[ci];
+            ctx.beginPath(); ctx.roundRect(bx+18, by+18, bs-36, bs-36, 12); ctx.fill();
         }
     }
 
-    // Roads (between blocks)
-    ctx.fillStyle = COLORS.road;
-    for (let x = bs - 15; x < MAP_W; x += bs) ctx.fillRect(x, 0, 30, MAP_H);
-    for (let y = bs - 15; y < MAP_H; y += bs) ctx.fillRect(0, y, MAP_W, 30);
-    // Road markings
-    ctx.fillStyle = '#bbb';
-    for (let x = bs; x < MAP_W; x += bs) for (let y = 0; y < MAP_H; y += 30) ctx.fillRect(x-2, y, 4, 18);
-    for (let y = bs; y < MAP_H; y += bs) for (let x = 0; x < MAP_W; x += 30) ctx.fillRect(x, y-2, 18, 4);
+    // Roads (smooth dark grey)
+    ctx.fillStyle = '#5a5a5a';
+    for (let x = bs-12; x < MAP_W; x += bs) { ctx.beginPath(); ctx.roundRect(x, 5, 24, MAP_H-10, 4); ctx.fill(); }
+    for (let y = bs-12; y < MAP_H; y += bs) { ctx.beginPath(); ctx.roundRect(5, y, MAP_W-10, 24, 4); ctx.fill(); }
+    // White dashes
+    ctx.fillStyle = '#eee';
+    for (let x = bs; x < MAP_W; x += bs) for (let y = 0; y < MAP_H; y += 35) ctx.fillRect(x-1.5, y, 3, 20);
+    for (let y = bs; y < MAP_H; y += bs) for (let x = 0; x < MAP_W; x += 35) ctx.fillRect(x, y-1.5, 20, 3);
 
     // Objects (not falling)
     objects.filter(o => !o.falling).forEach(o => drawObj(o));
@@ -292,124 +293,60 @@ function draw() {
 
 function drawHole(h) {
     const skin = h.isPlayer ? HOLE_SKINS[selectedSkin] : { rim: h.color, fill: '#111', pattern: 'none', emoji: ['🔴','🟡','🟣','🟢'][bots.indexOf(h)] || '⚫' };
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.beginPath(); ctx.arc(h.x+2, h.y+3, h.radius, 0, Math.PI*2); ctx.fill();
-    // Main hole
-    ctx.fillStyle = skin.fill;
-    ctx.beginPath(); ctx.arc(h.x, h.y, h.radius, 0, Math.PI*2); ctx.fill();
-    // Pattern
-    if (skin.pattern === 'glow') {
-        ctx.strokeStyle = skin.rim+'60'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(h.x, h.y, h.radius*0.6, animFrame*0.04, animFrame*0.04+Math.PI*1.2); ctx.stroke();
-    } else if (skin.pattern === 'lava') {
-        ctx.fillStyle = '#ff6d0030';
-        ctx.beginPath(); ctx.arc(h.x+Math.sin(animFrame*0.05)*5, h.y+Math.cos(animFrame*0.05)*5, h.radius*0.4, 0, Math.PI*2); ctx.fill();
-    } else if (skin.pattern === 'bubbles') {
-        ctx.fillStyle = skin.rim+'30';
-        for (let i=0;i<3;i++) { const a=animFrame*0.03+i*2; ctx.beginPath(); ctx.arc(h.x+Math.cos(a)*h.radius*0.3, h.y+Math.sin(a)*h.radius*0.3, 4+i*2, 0, Math.PI*2); ctx.fill(); }
-    } else if (skin.pattern === 'pulse') {
-        const pulse = 0.8+Math.sin(animFrame*0.08)*0.2;
-        ctx.strokeStyle = skin.rim+'40'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(h.x, h.y, h.radius*pulse, 0, Math.PI*2); ctx.stroke();
-    } else if (skin.pattern === 'shine') {
-        ctx.fillStyle = skin.rim+'20';
-        ctx.beginPath(); ctx.arc(h.x-h.radius*0.2, h.y-h.radius*0.2, h.radius*0.3, 0, Math.PI*2); ctx.fill();
+    const r = h.radius;
+
+    // Outer glow ring
+    ctx.shadowColor = skin.rim; ctx.shadowBlur = 18;
+    ctx.strokeStyle = skin.rim+'50'; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.arc(h.x, h.y, r+4, 0, Math.PI*2); ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Depth shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.arc(h.x+3, h.y+4, r, 0, Math.PI*2); ctx.fill();
+
+    // Hole gradient (deep dark center)
+    const grad = ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, r);
+    grad.addColorStop(0, '#000');
+    grad.addColorStop(0.6, skin.fill);
+    grad.addColorStop(1, skin.rim+'40');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI*2); ctx.fill();
+
+    // Swirl lines inside
+    ctx.strokeStyle = skin.rim+'35'; ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+        const offset = animFrame * 0.03 + i * (Math.PI*2/3);
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, r*(0.3+i*0.15), offset, offset+Math.PI*0.8);
+        ctx.stroke();
     }
-    // Rim
-    ctx.strokeStyle = skin.rim; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(h.x, h.y, h.radius, 0, Math.PI*2); ctx.stroke();
-    // Animal emoji inside hole
-    const emojiSize = Math.max(16, Math.floor(h.radius * 0.7));
+
+    // Animal emoji (grows with hole)
+    const emojiSize = Math.max(18, Math.floor(r * 0.75));
     ctx.font = emojiSize + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(skin.emoji, h.x, h.y + 2);
+
+    // Rim
+    ctx.strokeStyle = skin.rim; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI*2); ctx.stroke();
+
     // Name
-    ctx.fillStyle = h.isPlayer ? '#fff' : h.color;
-    ctx.font = 'bold 12px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(h.name, h.x, h.y - h.radius - 10);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 13px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4;
+    ctx.fillText(h.name, h.x, h.y - r - 12);
+    ctx.shadowBlur = 0;
 }
 
 function drawObj(o) {
-    const x = o.x, y = o.y;
-    if (o.type === 'lamp') {
-        ctx.fillStyle = '#78909c';
-        ctx.fillRect(x-1.5, y-8, 3, 10);
-        ctx.fillStyle = '#fff9c4';
-        ctx.beginPath(); ctx.arc(x, y-8, 4, 0, Math.PI*2); ctx.fill();
-    } else if (o.type === 'tree') {
-        // Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.1)';
-        ctx.beginPath(); ctx.ellipse(x, y+8, 10, 5, 0, 0, Math.PI*2); ctx.fill();
-        // Trunk
-        ctx.fillStyle = '#6d4c41';
-        ctx.fillRect(x-3, y-2, 6, 14);
-        // Foliage (circle)
-        ctx.fillStyle = o.color;
-        ctx.beginPath(); ctx.arc(x, y-8, 12, 0, Math.PI*2); ctx.fill();
-    } else if (o.type === 'car') {
-        // Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.1)';
-        ctx.beginPath(); ctx.ellipse(x, y+6, 12, 5, 0, 0, Math.PI*2); ctx.fill();
-        // Body
-        ctx.fillStyle = o.color;
-        ctx.beginPath(); ctx.roundRect(x-11, y-5, 22, 12, 4); ctx.fill();
-        // Top
-        ctx.fillStyle = o.color === '#fff' ? '#e0e0e0' : o.color;
-        ctx.beginPath(); ctx.roundRect(x-7, y-9, 14, 7, 3); ctx.fill();
-        // Windows
-        ctx.fillStyle = 'rgba(100,200,255,0.5)';
-        ctx.fillRect(x-5, y-8, 5, 5);
-        ctx.fillRect(x+1, y-8, 5, 5);
-    } else if (o.type === 'house') {
-        // Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.08)';
-        ctx.fillRect(x-13, y+10, 28, 6);
-        // Walls
-        ctx.fillStyle = o.color;
-        ctx.fillRect(x-13, y-10, 26, 22);
-        // Roof
-        ctx.fillStyle = '#d84315';
-        ctx.beginPath(); ctx.moveTo(x-16, y-10); ctx.lineTo(x, y-22); ctx.lineTo(x+16, y-10); ctx.fill();
-        // Door
-        ctx.fillStyle = '#5d4037';
-        ctx.beginPath(); ctx.roundRect(x-4, y+2, 8, 10, 2); ctx.fill();
-        // Window
-        ctx.fillStyle = '#bbdefb';
-        ctx.fillRect(x+5, y-5, 6, 6);
-        ctx.fillRect(x-12, y-5, 6, 6);
-    } else if (o.type === 'building') {
-        // Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.1)';
-        ctx.fillRect(x-16, y+15, 34, 6);
-        // Main
-        ctx.fillStyle = o.color;
-        ctx.fillRect(x-16, y-25, 32, 42);
-        // Windows
-        ctx.fillStyle = '#fff9c4';
-        for (let wy = 0; wy < 4; wy++) for (let wx = 0; wx < 3; wx++) {
-            ctx.fillRect(x-12+wx*10, y-20+wy*10, 6, 6);
-        }
-    } else if (o.type === 'tower') {
-        // Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.1)';
-        ctx.fillRect(x-14, y+22, 30, 8);
-        // Main
-        ctx.fillStyle = o.color;
-        ctx.fillRect(x-14, y-40, 28, 65);
-        // Top section (lighter)
-        ctx.fillStyle = '#78909c';
-        ctx.fillRect(x-10, y-48, 20, 12);
-        // Antenna
-        ctx.fillStyle = '#455a64';
-        ctx.fillRect(x-1, y-56, 3, 10);
-        ctx.fillStyle = '#f44336';
-        ctx.beginPath(); ctx.arc(x, y-56, 3, 0, Math.PI*2); ctx.fill();
-        // Windows
-        ctx.fillStyle = 'rgba(255,255,200,0.4)';
-        for (let wy = 0; wy < 6; wy++) for (let wx = 0; wx < 2; wx++) {
-            ctx.fillRect(x-8+wx*12, y-35+wy*10, 7, 6);
-        }
-    }
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.beginPath(); ctx.ellipse(o.x+2, o.y+4, o.size*0.7, o.size*0.4, 0, 0, Math.PI*2); ctx.fill();
+    // Emoji (scales with size)
+    const fontSize = Math.max(14, Math.floor(o.size * 1.3));
+    ctx.font = fontSize + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(o.emoji, o.x, o.y);
 }
 
 
