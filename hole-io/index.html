@@ -25,7 +25,7 @@ document.addEventListener('touchmove', e => e.preventDefault(), { passive: false
 // ===== CONFIG =====
 const MAP_W = 2000, MAP_H = 2000;
 const BASE_RADIUS = 25;
-const SPEED = 6;
+const SPEED = 5;
 const BOT_COUNT = 4;
 const GAME_TIME = 90;
 
@@ -42,14 +42,14 @@ const BOT_NAMES = ['Red','Gold','Purple','Teal'];
 
 // Hole skins
 const HOLE_SKINS = [
-    { name: 'Classic', rim: '#333', fill: '#111', pattern: 'none' },
-    { name: 'Neon Blue', rim: '#00e5ff', fill: '#001a33', pattern: 'glow' },
-    { name: 'Lava', rim: '#ff6d00', fill: '#1a0500', pattern: 'lava' },
-    { name: 'Galaxy', rim: '#ea80fc', fill: '#0d001a', pattern: 'stars' },
-    { name: 'Toxic', rim: '#76ff03', fill: '#001a00', pattern: 'bubbles' },
-    { name: 'Gold', rim: '#ffd600', fill: '#1a1500', pattern: 'shine' },
-    { name: 'Ice', rim: '#80deea', fill: '#001a1a', pattern: 'frost' },
-    { name: 'Blood', rim: '#ff1744', fill: '#1a0000', pattern: 'pulse' },
+    { name: 'Hiu', rim: '#1565c0', fill: '#0d1b2a', emoji: '🦈', pattern: 'none' },
+    { name: 'Naga', rim: '#ff3d00', fill: '#1a0500', emoji: '🐉', pattern: 'lava' },
+    { name: 'Serigala', rim: '#78909c', fill: '#1a1a1a', emoji: '🐺', pattern: 'none' },
+    { name: 'Ubur-ubur', rim: '#ea80fc', fill: '#0d001a', emoji: '🪼', pattern: 'glow' },
+    { name: 'Ular', rim: '#76ff03', fill: '#001a00', emoji: '🐍', pattern: 'bubbles' },
+    { name: 'Elang', rim: '#ffd600', fill: '#1a1500', emoji: '🦅', pattern: 'shine' },
+    { name: 'Gurita', rim: '#00bcd4', fill: '#001a1a', emoji: '🐙', pattern: 'glow' },
+    { name: 'Singa', rim: '#ff9800', fill: '#1a0e00', emoji: '🦁', pattern: 'pulse' },
 ];
 let selectedSkin = parseInt(localStorage.getItem('holeSkin') || '0');
 
@@ -115,11 +115,8 @@ function endGame() {
 
 // ===== PHYSICS =====
 function moveHole(hole, mx, my) {
-    // Smooth interpolation (like snake game)
-    const targetX = hole.x + mx * SPEED;
-    const targetY = hole.y + my * SPEED;
-    hole.x += (targetX - hole.x) * 0.4;
-    hole.y += (targetY - hole.y) * 0.4;
+    hole.x += mx * SPEED;
+    hole.y += my * SPEED;
     hole.x = Math.max(hole.radius, Math.min(MAP_W - hole.radius, hole.x));
     hole.y = Math.max(hole.radius, Math.min(MAP_H - hole.radius, hole.y));
 }
@@ -294,7 +291,7 @@ function draw() {
 }
 
 function drawHole(h) {
-    const skin = h.isPlayer ? HOLE_SKINS[selectedSkin] : { rim: h.color, fill: '#111', pattern: 'none' };
+    const skin = h.isPlayer ? HOLE_SKINS[selectedSkin] : { rim: h.color, fill: '#111', pattern: 'none', emoji: ['🔴','🟡','🟣','🟢'][bots.indexOf(h)] || '⚫' };
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath(); ctx.arc(h.x+2, h.y+3, h.radius, 0, Math.PI*2); ctx.fill();
@@ -305,28 +302,31 @@ function drawHole(h) {
     if (skin.pattern === 'glow') {
         ctx.strokeStyle = skin.rim+'60'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.radius*0.6, animFrame*0.04, animFrame*0.04+Math.PI*1.2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(h.x, h.y, h.radius*0.35, -animFrame*0.06, -animFrame*0.06+Math.PI); ctx.stroke();
     } else if (skin.pattern === 'lava') {
         ctx.fillStyle = '#ff6d0030';
         ctx.beginPath(); ctx.arc(h.x+Math.sin(animFrame*0.05)*5, h.y+Math.cos(animFrame*0.05)*5, h.radius*0.4, 0, Math.PI*2); ctx.fill();
-    } else if (skin.pattern === 'stars') {
-        ctx.fillStyle = '#fff';
-        for (let i=0;i<5;i++) { const a=animFrame*0.01+i*1.2; ctx.beginPath(); ctx.arc(h.x+Math.cos(a)*h.radius*0.4, h.y+Math.sin(a)*h.radius*0.4, 1.5, 0, Math.PI*2); ctx.fill(); }
     } else if (skin.pattern === 'bubbles') {
-        ctx.fillStyle = '#76ff0330';
+        ctx.fillStyle = skin.rim+'30';
         for (let i=0;i<3;i++) { const a=animFrame*0.03+i*2; ctx.beginPath(); ctx.arc(h.x+Math.cos(a)*h.radius*0.3, h.y+Math.sin(a)*h.radius*0.3, 4+i*2, 0, Math.PI*2); ctx.fill(); }
     } else if (skin.pattern === 'pulse') {
         const pulse = 0.8+Math.sin(animFrame*0.08)*0.2;
         ctx.strokeStyle = skin.rim+'40'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.radius*pulse, 0, Math.PI*2); ctx.stroke();
+    } else if (skin.pattern === 'shine') {
+        ctx.fillStyle = skin.rim+'20';
+        ctx.beginPath(); ctx.arc(h.x-h.radius*0.2, h.y-h.radius*0.2, h.radius*0.3, 0, Math.PI*2); ctx.fill();
     }
     // Rim
     ctx.strokeStyle = skin.rim; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(h.x, h.y, h.radius, 0, Math.PI*2); ctx.stroke();
+    // Animal emoji inside hole
+    const emojiSize = Math.max(16, Math.floor(h.radius * 0.7));
+    ctx.font = emojiSize + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(skin.emoji, h.x, h.y + 2);
     // Name
     ctx.fillStyle = h.isPlayer ? '#fff' : h.color;
-    ctx.font = 'bold 12px Nunito'; ctx.textAlign = 'center';
-    ctx.fillText(h.name, h.x, h.y - h.radius - 8);
+    ctx.font = 'bold 12px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(h.name, h.x, h.y - h.radius - 10);
 }
 
 function drawObj(o) {
