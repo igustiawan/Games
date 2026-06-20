@@ -27,7 +27,7 @@ const MAP_W = 2000, MAP_H = 2000;
 const BASE_RADIUS = 25;
 const SPEED = 5;
 const BOT_COUNT = 4;
-const GAME_TIME = 90;
+const GAME_TIME = 60;
 
 // Pastel/bright city colors like real Hole.io
 const COLORS = {
@@ -131,7 +131,7 @@ function eatCheck(hole) {
             o.falling = true;
             o.fallT = 0;
             hole.eaten++;
-            hole.radius += 0.5 + o.size * 0.03;
+            hole.radius += 0.3 + o.size * 0.015;
             // Eat effect!
             spawnEatEffect(o.x, o.y, o.color, 6);
             if (hole.isPlayer && navigator.vibrate) navigator.vibrate(15);
