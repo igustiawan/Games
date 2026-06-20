@@ -75,15 +75,15 @@ function genObjects() {
                 const ox = cx + Math.random() * bw;
                 const oy = cy + Math.random() * bh;
                 const r = Math.random();
-                if (r < 0.2) objects.push({ x:ox, y:oy, size:8, emoji:'🌱', type:'tiny' });
-                else if (r < 0.35) objects.push({ x:ox, y:oy, size:10, emoji:'🪨', type:'small' });
-                else if (r < 0.48) objects.push({ x:ox, y:oy, size:12, emoji:'🌳', type:'small' });
-                else if (r < 0.58) objects.push({ x:ox, y:oy, size:14, emoji:'🚶', type:'small' });
-                else if (r < 0.68) objects.push({ x:ox, y:oy, size:18, emoji:['🚗','🚙','🚕','🏎️'][Math.floor(Math.random()*4)], type:'medium' });
-                else if (r < 0.78) objects.push({ x:ox, y:oy, size:22, emoji:'🚌', type:'medium' });
-                else if (r < 0.86) objects.push({ x:ox, y:oy, size:30, emoji:['🏠','🏡','🏘️'][Math.floor(Math.random()*3)], type:'large' });
-                else if (r < 0.93) objects.push({ x:ox, y:oy, size:42, emoji:['🏢','🏬','🏨'][Math.floor(Math.random()*3)], type:'big' });
-                else objects.push({ x:ox, y:oy, size:55, emoji:['🏙️','🗼','⛪'][Math.floor(Math.random()*3)], type:'huge' });
+                if (r < 0.2) objects.push({ x:ox, y:oy, size:8, emoji:'🌱', type:'tiny', falling:false, fallT:0 });
+                else if (r < 0.35) objects.push({ x:ox, y:oy, size:10, emoji:'🪨', type:'small', falling:false, fallT:0 });
+                else if (r < 0.48) objects.push({ x:ox, y:oy, size:12, emoji:'🌳', type:'small', falling:false, fallT:0 });
+                else if (r < 0.58) objects.push({ x:ox, y:oy, size:14, emoji:'🚶', type:'small', falling:false, fallT:0 });
+                else if (r < 0.68) objects.push({ x:ox, y:oy, size:18, emoji:['🚗','🚙','🚕','🏎️'][Math.floor(Math.random()*4)], type:'medium', falling:false, fallT:0 });
+                else if (r < 0.78) objects.push({ x:ox, y:oy, size:22, emoji:'🚌', type:'medium', falling:false, fallT:0 });
+                else if (r < 0.86) objects.push({ x:ox, y:oy, size:30, emoji:['🏠','🏡','🏘️'][Math.floor(Math.random()*3)], type:'large', falling:false, fallT:0 });
+                else if (r < 0.93) objects.push({ x:ox, y:oy, size:42, emoji:['🏢','🏬','🏨'][Math.floor(Math.random()*3)], type:'big', falling:false, fallT:0 });
+                else objects.push({ x:ox, y:oy, size:55, emoji:['🏙️','🗼','⛪'][Math.floor(Math.random()*3)], type:'huge', falling:false, fallT:0 });
             }
         }
     }
@@ -251,20 +251,21 @@ function draw() {
         for (let by = 0; by < MAP_H; by += bs) {
             const ci = ((bx/bs) + (by/bs)) % blockColors.length;
             ctx.fillStyle = blockColors[ci];
-            ctx.beginPath(); ctx.roundRect(bx+18, by+18, bs-36, bs-36, 12); ctx.fill();
+            ctx.fillRect(bx+18, by+18, bs-36, bs-36);
         }
     }
 
     // Roads (smooth dark grey)
     ctx.fillStyle = '#5a5a5a';
-    for (let x = bs-12; x < MAP_W; x += bs) { ctx.beginPath(); ctx.roundRect(x, 5, 24, MAP_H-10, 4); ctx.fill(); }
-    for (let y = bs-12; y < MAP_H; y += bs) { ctx.beginPath(); ctx.roundRect(5, y, MAP_W-10, 24, 4); ctx.fill(); }
+    for (let x = bs-12; x < MAP_W; x += bs) ctx.fillRect(x, 0, 24, MAP_H);
+    for (let y = bs-12; y < MAP_H; y += bs) ctx.fillRect(0, y, MAP_W, 24);
     // White dashes
     ctx.fillStyle = '#eee';
     for (let x = bs; x < MAP_W; x += bs) for (let y = 0; y < MAP_H; y += 35) ctx.fillRect(x-1.5, y, 3, 20);
     for (let y = bs; y < MAP_H; y += bs) for (let x = 0; x < MAP_W; x += 35) ctx.fillRect(x, y-1.5, 20, 3);
 
     // Objects (not falling)
+    ctx.shadowBlur = 0;
     objects.filter(o => !o.falling).forEach(o => drawObj(o));
 
     // Falling objects (shrinking into hole)
