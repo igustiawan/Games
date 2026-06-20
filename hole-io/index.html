@@ -40,7 +40,20 @@ const COLORS = {
 const BOT_COLORS = ['#ff5252','#ffd600','#7c4dff','#00bfa5'];
 const BOT_NAMES = ['Red','Gold','Purple','Teal'];
 
-let state = 'menu';
+// Hole skins
+const HOLE_SKINS = [
+    { name: 'Classic', rim: '#333', fill: '#111', pattern: 'none' },
+    { name: 'Neon Blue', rim: '#00e5ff', fill: '#001a33', pattern: 'glow' },
+    { name: 'Lava', rim: '#ff6d00', fill: '#1a0500', pattern: 'lava' },
+    { name: 'Galaxy', rim: '#ea80fc', fill: '#0d001a', pattern: 'stars' },
+    { name: 'Toxic', rim: '#76ff03', fill: '#001a00', pattern: 'bubbles' },
+    { name: 'Gold', rim: '#ffd600', fill: '#1a1500', pattern: 'shine' },
+    { name: 'Ice', rim: '#80deea', fill: '#001a1a', pattern: 'frost' },
+    { name: 'Blood', rim: '#ff1744', fill: '#1a0000', pattern: 'pulse' },
+];
+let selectedSkin = parseInt(localStorage.getItem('holeSkin') || '0');
+
+let state = 'menu'; // menu, skin, playing, dead
 let player, bots, objects, particles;
 let camera = { x: 0, y: 0 };
 let highScore, timeLeft, timerInterval;
@@ -122,28 +135,49 @@ function eatCheck(hole) {
             o.fallT = 0;
             hole.eaten++;
             hole.radius += 0.5 + o.size * 0.03;
+            // Eat effect!
+            spawnEatEffect(o.x, o.y, o.color, 6);
+            if (hole.isPlayer && navigator.vibrate) navigator.vibrate(15);
         }
     }
 }
 
+function spawnEatEffect(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        particles.push({ x, y, vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8-2, life: 1, color, size: 3+Math.random()*5 });
+    }
+}
+
 function updateBot(bot) {
-    let tx = bot.x, ty = bot.y, best = 600;
+    let tx = bot.x + (Math.random()-0.5)*50, ty = bot.y + (Math.random()-0.5)*50;
+    let best = 500;
+    // Find nearest eatable object
     objects.forEach(o => {
         if (o.falling || o.size > bot.radius) return;
         const d = Math.hypot(o.x-bot.x, o.y-bot.y);
         if (d < best) { best = d; tx = o.x; ty = o.y; }
     });
-    // Flee bigger
+    // Hunt smaller holes
+    [player, ...bots].forEach(h => {
+        if (h===bot || h.radius >= bot.radius*0.8) return;
+        const d = Math.hypot(h.x-bot.x, h.y-bot.y);
+        if (d < 250 && bot.radius > h.radius*1.5) { tx = h.x; ty = h.y; }
+    });
+    // Flee bigger holes
     [player, ...bots].forEach(h => {
         if (h===bot) return;
-        if (h.radius > bot.radius*1.5) {
+        if (h.radius > bot.radius*1.4) {
             const d = Math.hypot(h.x-bot.x, h.y-bot.y);
-            if (d < 180) { tx = bot.x*2-h.x; ty = bot.y*2-h.y; }
+            if (d < 200) { tx = bot.x*2-h.x; ty = bot.y*2-h.y; }
         }
     });
     const dx = tx-bot.x, dy = ty-bot.y;
     const len = Math.hypot(dx, dy)||1;
-    moveHole(bot, dx/len*0.85, dy/len*0.85);
+    // Direct movement (no lerp reduction for bots)
+    bot.x += (dx/len) * SPEED * 0.75;
+    bot.y += (dy/len) * SPEED * 0.75;
+    bot.x = Math.max(bot.radius, Math.min(MAP_W-bot.radius, bot.x));
+    bot.y = Math.max(bot.radius, Math.min(MAP_H-bot.radius, bot.y));
     eatCheck(bot);
 }
 
@@ -163,6 +197,30 @@ function update() {
     if (mx||my) { const len = Math.hypot(mx,my); moveHole(player, mx/len, my/len); }
     eatCheck(player);
     bots.forEach(b => updateBot(b));
+
+    // Hole eats hole (bigger eats smaller)
+    const allHoles = [player, ...bots];
+    for (let i = 0; i < allHoles.length; i++) {
+        for (let j = i+1; j < allHoles.length; j++) {
+            const a = allHoles[i], b = allHoles[j];
+            const d = Math.hypot(a.x-b.x, a.y-b.y);
+            if (d < Math.max(a.radius, b.radius) * 0.6) {
+                if (a.radius > b.radius * 1.4) {
+                    // a eats b
+                    a.radius += b.radius * 0.3; a.eaten += b.eaten + 3;
+                    spawnEatEffect(b.x, b.y, b.color || '#ff5252', 15);
+                    b.x = 100+Math.random()*(MAP_W-200); b.y = 100+Math.random()*(MAP_H-200); b.radius = BASE_RADIUS; b.eaten = 0;
+                    if (b.isPlayer) endGame();
+                } else if (b.radius > a.radius * 1.4) {
+                    // b eats a
+                    b.radius += a.radius * 0.3; b.eaten += a.eaten + 3;
+                    spawnEatEffect(a.x, a.y, a.color || '#ff5252', 15);
+                    a.x = 100+Math.random()*(MAP_W-200); a.y = 100+Math.random()*(MAP_H-200); a.radius = BASE_RADIUS; a.eaten = 0;
+                    if (a.isPlayer) endGame();
+                }
+            }
+        }
+    }
 
     // Falling objects
     for (let i = objects.length-1; i >= 0; i--) {
@@ -231,18 +289,42 @@ function draw() {
     ctx.restore();
     drawHUD();
     if (state==='menu') drawMenu();
+    if (state==='skin') drawSkinMenu();
     if (state==='dead') drawEnd();
 }
 
 function drawHole(h) {
-    // Simple black circle (like real hole.io)
-    ctx.fillStyle = '#111';
+    const skin = h.isPlayer ? HOLE_SKINS[selectedSkin] : { rim: h.color, fill: '#111', pattern: 'none' };
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath(); ctx.arc(h.x+2, h.y+3, h.radius, 0, Math.PI*2); ctx.fill();
+    // Main hole
+    ctx.fillStyle = skin.fill;
     ctx.beginPath(); ctx.arc(h.x, h.y, h.radius, 0, Math.PI*2); ctx.fill();
-    // Thin colored rim
-    ctx.strokeStyle = h.color; ctx.lineWidth = 3;
+    // Pattern
+    if (skin.pattern === 'glow') {
+        ctx.strokeStyle = skin.rim+'60'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(h.x, h.y, h.radius*0.6, animFrame*0.04, animFrame*0.04+Math.PI*1.2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(h.x, h.y, h.radius*0.35, -animFrame*0.06, -animFrame*0.06+Math.PI); ctx.stroke();
+    } else if (skin.pattern === 'lava') {
+        ctx.fillStyle = '#ff6d0030';
+        ctx.beginPath(); ctx.arc(h.x+Math.sin(animFrame*0.05)*5, h.y+Math.cos(animFrame*0.05)*5, h.radius*0.4, 0, Math.PI*2); ctx.fill();
+    } else if (skin.pattern === 'stars') {
+        ctx.fillStyle = '#fff';
+        for (let i=0;i<5;i++) { const a=animFrame*0.01+i*1.2; ctx.beginPath(); ctx.arc(h.x+Math.cos(a)*h.radius*0.4, h.y+Math.sin(a)*h.radius*0.4, 1.5, 0, Math.PI*2); ctx.fill(); }
+    } else if (skin.pattern === 'bubbles') {
+        ctx.fillStyle = '#76ff0330';
+        for (let i=0;i<3;i++) { const a=animFrame*0.03+i*2; ctx.beginPath(); ctx.arc(h.x+Math.cos(a)*h.radius*0.3, h.y+Math.sin(a)*h.radius*0.3, 4+i*2, 0, Math.PI*2); ctx.fill(); }
+    } else if (skin.pattern === 'pulse') {
+        const pulse = 0.8+Math.sin(animFrame*0.08)*0.2;
+        ctx.strokeStyle = skin.rim+'40'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(h.x, h.y, h.radius*pulse, 0, Math.PI*2); ctx.stroke();
+    }
+    // Rim
+    ctx.strokeStyle = skin.rim; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(h.x, h.y, h.radius, 0, Math.PI*2); ctx.stroke();
-    // Name above
-    ctx.fillStyle = h.color === '#1a1a1a' ? '#fff' : h.color;
+    // Name
+    ctx.fillStyle = h.isPlayer ? '#fff' : h.color;
     ctx.font = 'bold 12px Nunito'; ctx.textAlign = 'center';
     ctx.fillText(h.name, h.x, h.y - h.radius - 8);
 }
@@ -364,16 +446,63 @@ function drawHUD() {
 function drawMenu() {
     ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0,0,W,H);
     ctx.fillStyle = '#fff'; ctx.font = 'bold 48px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('HOLE.IO', W/2, H/2-90);
+    ctx.fillText('HOLE.IO', W/2, H/2-110);
     ctx.fillStyle = '#ddd'; ctx.font = '15px Nunito';
-    ctx.fillText('Gerakin lobang, makan seisi kota!', W/2, H/2-45);
+    ctx.fillText('Gerakin lobang, makan seisi kota!', W/2, H/2-65);
+    // Skin preview
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.roundRect(W/2-60, H/2-50, 120, 28, 14); ctx.fill();
+    ctx.fillStyle = HOLE_SKINS[selectedSkin].rim; ctx.font = 'bold 12px Nunito';
+    ctx.fillText('Skin: '+HOLE_SKINS[selectedSkin].name, W/2, H/2-36);
+    // Start button
     ctx.fillStyle = '#4caf50';
-    ctx.beginPath(); ctx.roundRect(W/2-90, H/2-8, 180, 52, 26); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 22px Nunito'; ctx.fillText('MAIN!', W/2, H/2+18);
-    ctx.fillStyle = '#aaa'; ctx.font = '12px Nunito';
-    ctx.fillText('WASD / Arrow / Joystick', W/2, H/2+60);
-    ctx.fillText('90 detik — makan sebanyak-banyaknya!', W/2, H/2+77);
-    if (highScore > 0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 13px Nunito'; ctx.fillText('Best: '+highScore+' eaten', W/2, H/2+105); }
+    ctx.beginPath(); ctx.roundRect(W/2-90, H/2-8, 180, 50, 25); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 22px Nunito'; ctx.fillText('MAIN!', W/2, H/2+17);
+    // Skin button
+    ctx.fillStyle = '#7c4dff';
+    ctx.beginPath(); ctx.roundRect(W/2-90, H/2+52, 180, 42, 21); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Nunito'; ctx.fillText('PILIH SKIN', W/2, H/2+73);
+    // Controls
+    ctx.fillStyle = '#aaa'; ctx.font = '11px Nunito';
+    ctx.fillText('WASD / Arrow / Joystick', W/2, H/2+115);
+    if (highScore > 0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 13px Nunito'; ctx.fillText('Best: '+highScore, W/2, H/2+135); }
+}
+
+function drawSkinMenu() {
+    ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 28px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('PILIH SKIN', W/2, 45);
+
+    const cols = Math.min(4, Math.floor((W-20)/120));
+    const cw = 100, ch = 90;
+    const startX = W/2 - (cols*cw + (cols-1)*10)/2;
+    const startY = 80;
+
+    HOLE_SKINS.forEach((skin, i) => {
+        const col = i % cols, row = Math.floor(i / cols);
+        const cx = startX + col * (cw+10) + cw/2;
+        const cy = startY + row * (ch+10) + ch/2;
+        const sel = i === selectedSkin;
+        // Card bg
+        ctx.fillStyle = sel ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)';
+        ctx.strokeStyle = sel ? skin.rim : 'rgba(255,255,255,0.1)'; ctx.lineWidth = sel ? 2 : 1;
+        ctx.beginPath(); ctx.roundRect(cx-cw/2, cy-ch/2, cw, ch, 12); ctx.fill(); ctx.stroke();
+        // Hole preview
+        ctx.fillStyle = skin.fill;
+        ctx.beginPath(); ctx.arc(cx, cy-10, 20, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = skin.rim; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy-10, 20, 0, Math.PI*2); ctx.stroke();
+        // Name
+        ctx.fillStyle = sel ? skin.rim : '#aaa'; ctx.font = 'bold 10px Nunito';
+        ctx.fillText(skin.name, cx, cy+30);
+        if (sel) { ctx.fillStyle = '#fff'; ctx.font = '9px Nunito'; ctx.fillText('TERPILIH', cx, cy+42); }
+    });
+
+    // OKE button
+    const rows = Math.ceil(HOLE_SKINS.length / cols);
+    const btnY = startY + rows * (ch+10) + 10;
+    ctx.fillStyle = '#4caf50';
+    ctx.beginPath(); ctx.roundRect(W/2-80, btnY, 160, 42, 21); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 18px Nunito'; ctx.fillText('OKE!', W/2, btnY+21);
 }
 
 function drawEnd() {
@@ -402,7 +531,10 @@ document.addEventListener('keyup', e => { pressedKeys[e.key] = false; });
 
 canvas.addEventListener('touchstart', e => {
     const t = e.touches[0];
-    if (state==='menu') { if (t.clientX>W/2-90&&t.clientX<W/2+90&&t.clientY>H/2-8&&t.clientY<H/2+44) initGame(); }
+    if (state==='menu') {
+        if (t.clientX>W/2-90&&t.clientX<W/2+90&&t.clientY>H/2-8&&t.clientY<H/2+42) initGame();
+        else if (t.clientX>W/2-90&&t.clientX<W/2+90&&t.clientY>H/2+52&&t.clientY<H/2+94) state='skin';
+    } else if (state==='skin') { handleSkinClick(t.clientX, t.clientY); }
     else if (state==='dead') { if (t.clientX>W/2-90&&t.clientX<W/2+90&&t.clientY>H/2+20&&t.clientY<H/2+68) initGame(); }
     else { joystick.active=true; joystick.sx=t.clientX; joystick.sy=t.clientY; joystick.dx=0; joystick.dy=0; }
     e.preventDefault();
@@ -410,9 +542,32 @@ canvas.addEventListener('touchstart', e => {
 canvas.addEventListener('touchmove', e => { const t=e.touches[0]; if(joystick.active){joystick.dx=t.clientX-joystick.sx; joystick.dy=t.clientY-joystick.sy;} e.preventDefault(); }, {passive:false});
 canvas.addEventListener('touchend', e => { joystick.active=false; joystick.dx=0; joystick.dy=0; e.preventDefault(); }, {passive:false});
 canvas.addEventListener('click', e => {
-    if (state==='menu') { if(e.clientX>W/2-90&&e.clientX<W/2+90&&e.clientY>H/2-8&&e.clientY<H/2+44) initGame(); }
+    if (state==='menu') {
+        if(e.clientX>W/2-90&&e.clientX<W/2+90&&e.clientY>H/2-8&&e.clientY<H/2+42) initGame();
+        else if(e.clientX>W/2-90&&e.clientX<W/2+90&&e.clientY>H/2+52&&e.clientY<H/2+94) state='skin';
+    }
+    if (state==='skin') handleSkinClick(e.clientX, e.clientY);
     if (state==='dead') { if(e.clientX>W/2-90&&e.clientX<W/2+90&&e.clientY>H/2+20&&e.clientY<H/2+68) initGame(); }
 });
+
+function handleSkinClick(mx, my) {
+    const cols = Math.min(4, Math.floor((W-20)/120));
+    const cw = 100, ch = 90;
+    const startX = W/2 - (cols*cw + (cols-1)*10)/2;
+    const startY = 80;
+    HOLE_SKINS.forEach((skin, i) => {
+        const col = i % cols, row = Math.floor(i / cols);
+        const cx = startX + col*(cw+10) + cw/2;
+        const cy = startY + row*(ch+10) + ch/2;
+        if (mx > cx-cw/2 && mx < cx+cw/2 && my > cy-ch/2 && my < cy+ch/2) {
+            selectedSkin = i; localStorage.setItem('holeSkin', i);
+        }
+    });
+    // OKE button
+    const rows = Math.ceil(HOLE_SKINS.length / cols);
+    const btnY = startY + rows*(ch+10) + 10;
+    if (mx > W/2-80 && mx < W/2+80 && my > btnY && my < btnY+42) state = 'menu';
+}
 
 // ===== START =====
 function gameLoop() { requestAnimationFrame(gameLoop); if (state==='playing') update(); else { animFrame++; draw(); } }
