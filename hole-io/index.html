@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hole.io - Lobang Rakus!</title>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+    <title>Hole.io</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; background: #1a1a2e; }
+        html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; background: #5a9e4b; }
         body { display: flex; align-items: center; justify-content: center; font-family: 'Nunito', sans-serif; min-height: 100dvh; }
         canvas { display: block; }
     </style>
@@ -23,67 +23,73 @@ resize(); window.addEventListener('resize', resize);
 document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
 // ===== CONFIG =====
-const MAP_W = 2500, MAP_H = 2500;
-const BASE_RADIUS = 28;
-const PLAYER_SPEED = 3.5;
+const MAP_W = 2000, MAP_H = 2000;
+const BASE_RADIUS = 25;
+const SPEED = 4;
 const BOT_COUNT = 4;
 const GAME_TIME = 90;
 
-const HOLE_COLORS = [
-    { dark: '#0d0d2b', rim: '#00e5ff', light: '#004d5e' },
-    { dark: '#1a0505', rim: '#ff5252', light: '#5e0000' },
-    { dark: '#051a05', rim: '#69f0ae', light: '#005e1a' },
-    { dark: '#1a1a05', rim: '#ffd740', light: '#5e5e00' },
-    { dark: '#0d051a', rim: '#ea80fc', light: '#3d005e' },
-];
-const BOT_NAMES = ['Red', 'Green', 'Gold', 'Purple'];
+// Pastel/bright city colors like real Hole.io
+const COLORS = {
+    grass: '#7ec850',
+    road: '#8a8a8a',
+    sidewalk: '#c8c8b4',
+    block: '#9ed87a',
+};
+
+const BOT_COLORS = ['#ff5252','#ffd600','#7c4dff','#00bfa5'];
+const BOT_NAMES = ['Red','Gold','Purple','Teal'];
 
 let state = 'menu';
 let player, bots, objects, particles;
 let camera = { x: 0, y: 0 };
 let highScore, timeLeft, timerInterval;
-let joystick = { active: false, startX: 0, startY: 0, dx: 0, dy: 0, id: -1 };
+let joystick = { active: false, sx: 0, sy: 0, dx: 0, dy: 0 };
 let pressedKeys = {};
 let animFrame = 0;
 
-highScore = parseInt(localStorage.getItem('holeHS2') || '0');
+highScore = parseInt(localStorage.getItem('holeHS3') || '0');
 
 // ===== OBJECTS =====
-function generateObjects() {
+function genObjects() {
     objects = [];
-    // Small items (easily eaten)
-    for (let i = 0; i < 120; i++) objects.push(makeObj('lamp', 6+Math.random()*4, '#78909c'));
-    for (let i = 0; i < 80; i++) objects.push(makeObj('bush', 10+Math.random()*5, '#66bb6a'));
-    for (let i = 0; i < 50; i++) objects.push(makeObj('bench', 12+Math.random()*4, '#8d6e63'));
-    // Medium
-    for (let i = 0; i < 35; i++) objects.push(makeObj('car', 18+Math.random()*8, '#42a5f5'));
-    for (let i = 0; i < 30; i++) objects.push(makeObj('tree', 20+Math.random()*10, '#388e3c'));
-    // Large
-    for (let i = 0; i < 20; i++) objects.push(makeObj('house', 35+Math.random()*15, '#ffb74d'));
-    for (let i = 0; i < 12; i++) objects.push(makeObj('building', 50+Math.random()*20, '#ab47bc'));
-    for (let i = 0; i < 6; i++) objects.push(makeObj('tower', 75+Math.random()*15, '#ec407a'));
-}
-
-function makeObj(type, size, color) {
-    return { x: 60+Math.random()*(MAP_W-120), y: 60+Math.random()*(MAP_H-120), size, type, color, falling: false, fallProgress: 0 };
-}
-
-// ===== HOLE =====
-function createHole(x, y, colorIdx, isPlayer, name) {
-    return { x, y, radius: BASE_RADIUS, colorIdx, isPlayer, eaten: 0, name, targetX: x, targetY: y };
+    // Fill city blocks with objects
+    const blockSize = 200;
+    for (let bx = 50; bx < MAP_W - 50; bx += blockSize) {
+        for (let by = 50; by < MAP_H - 50; by += blockSize) {
+            const cx = bx + 30, cy = by + 30;
+            const bw = blockSize - 60, bh = blockSize - 60;
+            // Fill each block with stuff
+            const count = 4 + Math.floor(Math.random() * 4);
+            for (let i = 0; i < count; i++) {
+                const ox = cx + Math.random() * bw;
+                const oy = cy + Math.random() * bh;
+                const r = Math.random();
+                if (r < 0.3) objects.push({ x: ox, y: oy, w: 8, h: 8, type: 'lamp', color: '#607d8b', size: 6 });
+                else if (r < 0.5) objects.push({ x: ox, y: oy, w: 14, h: 14, type: 'tree', color: '#388e3c', size: 12 });
+                else if (r < 0.65) objects.push({ x: ox, y: oy, w: 22, h: 12, type: 'car', color: ['#e53935','#1e88e5','#fdd835','#fff'][Math.floor(Math.random()*4)], size: 16 });
+                else if (r < 0.8) objects.push({ x: ox, y: oy, w: 30, h: 30, type: 'house', color: ['#ffab91','#80cbc4','#ce93d8','#fff59d'][Math.floor(Math.random()*4)], size: 28 });
+                else if (r < 0.92) objects.push({ x: ox, y: oy, w: 40, h: 40, type: 'building', color: ['#90a4ae','#b0bec5','#78909c'][Math.floor(Math.random()*3)], size: 38 });
+                else objects.push({ x: ox, y: oy, w: 50, h: 60, type: 'tower', color: '#546e7a', size: 50 });
+            }
+        }
+    }
 }
 
 // ===== INIT =====
+function createHole(x, y, color, isPlayer, name) {
+    return { x, y, radius: BASE_RADIUS, color, isPlayer, eaten: 0, name };
+}
+
 function initGame() {
-    player = createHole(MAP_W/2, MAP_H/2, 0, true, 'Kamu');
+    player = createHole(MAP_W/2, MAP_H/2, '#1a1a1a', true, 'Kamu');
     bots = [];
     for (let i = 0; i < BOT_COUNT; i++) {
-        bots.push(createHole(200+Math.random()*(MAP_W-400), 200+Math.random()*(MAP_H-400), i+1, false, BOT_NAMES[i]));
+        bots.push(createHole(200+Math.random()*(MAP_W-400), 200+Math.random()*(MAP_H-400), BOT_COLORS[i], false, BOT_NAMES[i]));
     }
-    generateObjects();
+    genObjects();
     particles = [];
     timeLeft = GAME_TIME;
-    animFrame = 0;
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => { if (state==='playing') { timeLeft--; if (timeLeft<=0) endGame(); } }, 1000);
     state = 'playing';
@@ -91,60 +97,58 @@ function initGame() {
 
 function endGame() {
     clearInterval(timerInterval); state = 'dead';
-    const sc = player.eaten;
-    if (sc > highScore) { highScore = sc; localStorage.setItem('holeHS2', highScore); }
+    if (player.eaten > highScore) { highScore = player.eaten; localStorage.setItem('holeHS3', highScore); }
 }
 
-// ===== AI =====
-function updateBot(bot) {
-    // Find nearest eatable
-    let tx = bot.x, ty = bot.y, bestD = 600;
-    objects.forEach(o => {
-        if (o.falling || o.size > bot.radius * 0.7) return;
-        const d = Math.hypot(o.x-bot.x, o.y-bot.y);
-        if (d < bestD) { bestD = d; tx = o.x; ty = o.y; }
-    });
-    // Avoid bigger holes
-    [player, ...bots].forEach(h => {
-        if (h===bot) return;
-        if (h.radius > bot.radius*1.3) {
-            const d = Math.hypot(h.x-bot.x, h.y-bot.y);
-            if (d < 200) { tx = bot.x-(h.x-bot.x); ty = bot.y-(h.y-bot.y); }
-        }
-    });
-    // Move towards target (smooth)
-    const dx = tx-bot.x, dy = ty-bot.y;
-    const len = Math.hypot(dx, dy)||1;
-    bot.x += (dx/len) * PLAYER_SPEED * 0.8;
-    bot.y += (dy/len) * PLAYER_SPEED * 0.8;
-    bot.x = Math.max(bot.radius, Math.min(MAP_W-bot.radius, bot.x));
-    bot.y = Math.max(bot.radius, Math.min(MAP_H-bot.radius, bot.y));
-    eatObjects(bot);
+// ===== PHYSICS =====
+function moveHole(hole, mx, my) {
+    hole.x += mx * SPEED;
+    hole.y += my * SPEED;
+    hole.x = Math.max(hole.radius, Math.min(MAP_W - hole.radius, hole.x));
+    hole.y = Math.max(hole.radius, Math.min(MAP_H - hole.radius, hole.y));
 }
 
-// ===== EAT =====
-function eatObjects(hole) {
-    for (let i = objects.length-1; i >= 0; i--) {
+function eatCheck(hole) {
+    for (let i = objects.length - 1; i >= 0; i--) {
         const o = objects[i];
         if (o.falling) continue;
-        if (o.size > hole.radius * 0.7) continue; // Must be smaller
-        const d = Math.hypot(o.x-hole.x, o.y-hole.y);
-        if (d < hole.radius * 0.6) {
+        if (o.size > hole.radius * 0.7) continue;
+        const d = Math.hypot(o.x - hole.x, o.y - hole.y);
+        if (d < hole.radius * 0.5) {
             o.falling = true;
-            o.holeX = hole.x; o.holeY = hole.y;
+            o.fallT = 0;
+            o.holeRef = hole;
             hole.eaten++;
-            hole.radius += 0.3 + o.size * 0.02;
-            for (let j=0;j<4;j++) particles.push({x:o.x,y:o.y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,life:1,color:o.color,size:3+Math.random()*3});
+            hole.radius += 0.4 + o.size * 0.015;
         }
     }
 }
 
+function updateBot(bot) {
+    let tx = bot.x, ty = bot.y, best = 800;
+    objects.forEach(o => {
+        if (o.falling || o.size > bot.radius*0.7) return;
+        const d = Math.hypot(o.x-bot.x, o.y-bot.y);
+        if (d < best) { best = d; tx = o.x; ty = o.y; }
+    });
+    // Flee bigger
+    [player, ...bots].forEach(h => {
+        if (h===bot) return;
+        if (h.radius > bot.radius*1.5) {
+            const d = Math.hypot(h.x-bot.x, h.y-bot.y);
+            if (d < 180) { tx = bot.x*2-h.x; ty = bot.y*2-h.y; }
+        }
+    });
+    const dx = tx-bot.x, dy = ty-bot.y;
+    const len = Math.hypot(dx, dy)||1;
+    moveHole(bot, dx/len*0.85, dy/len*0.85);
+    eatCheck(bot);
+}
+
 // ===== UPDATE =====
 function update() {
-    if (state !== 'playing') return;
     animFrame++;
-
-    // Player movement (WASD / joystick only — NO mouse follow)
+    // Player input
     let mx = 0, my = 0;
     if (pressedKeys['w']||pressedKeys['W']||pressedKeys['ArrowUp']) my = -1;
     if (pressedKeys['s']||pressedKeys['S']||pressedKeys['ArrowDown']) my = 1;
@@ -154,28 +158,19 @@ function update() {
         const len = Math.hypot(joystick.dx, joystick.dy);
         if (len > 12) { mx = joystick.dx/len; my = joystick.dy/len; }
     }
-    if (mx||my) {
-        const len = Math.hypot(mx,my);
-        player.x += (mx/len)*PLAYER_SPEED;
-        player.y += (my/len)*PLAYER_SPEED;
-    }
-    player.x = Math.max(player.radius, Math.min(MAP_W-player.radius, player.x));
-    player.y = Math.max(player.radius, Math.min(MAP_H-player.radius, player.y));
-
-    eatObjects(player);
+    if (mx||my) { const len = Math.hypot(mx,my); moveHole(player, mx/len, my/len); }
+    eatCheck(player);
     bots.forEach(b => updateBot(b));
 
     // Falling objects
-    for (let i=objects.length-1;i>=0;i--) {
-        const o=objects[i];
+    for (let i = objects.length-1; i >= 0; i--) {
+        const o = objects[i];
         if (!o.falling) continue;
-        o.fallProgress += 0.04;
-        if (o.fallProgress >= 1) objects.splice(i,1);
+        o.fallT += 0.06;
+        if (o.fallT >= 1) objects.splice(i, 1);
     }
 
-    // Particles
-    for (let i=particles.length-1;i>=0;i--) { const p=particles[i]; p.x+=p.vx; p.y+=p.vy; p.life-=0.03; if(p.life<=0) particles.splice(i,1); }
-
+    // Camera
     camera.x = player.x - W/2;
     camera.y = player.y - H/2;
     draw();
@@ -183,48 +178,53 @@ function update() {
 
 // ===== DRAW =====
 function draw() {
-    // Light city background
-    ctx.fillStyle = '#f5f0e8'; ctx.fillRect(0,0,W,H);
-    ctx.save(); ctx.translate(-camera.x, -camera.y);
+    // Green background
+    ctx.fillStyle = COLORS.grass;
+    ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    ctx.translate(-camera.x, -camera.y);
 
-    // Roads
-    ctx.fillStyle = '#e0ddd5';
-    for (let x=0; x<MAP_W; x+=250) ctx.fillRect(x-12,0,24,MAP_H);
-    for (let y=0; y<MAP_H; y+=250) ctx.fillRect(0,y-12,MAP_W,24);
-    // Road lines
-    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1; ctx.setLineDash([12,8]);
-    for (let x=0; x<MAP_W; x+=250) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,MAP_H); ctx.stroke(); }
-    for (let y=0; y<MAP_H; y+=250) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(MAP_W,y); ctx.stroke(); }
-    ctx.setLineDash([]);
-
-    // Grass patches
-    ctx.fillStyle = '#d4e6c3';
-    for (let x=125;x<MAP_W;x+=250) for (let y=125;y<MAP_H;y+=250) {
-        ctx.beginPath(); ctx.roundRect(x-100,y-100,200,200,12); ctx.fill();
+    // Draw city blocks (grass squares with sidewalk border)
+    const bs = 200;
+    for (let bx = 0; bx < MAP_W; bx += bs) {
+        for (let by = 0; by < MAP_H; by += bs) {
+            // Sidewalk
+            ctx.fillStyle = COLORS.sidewalk;
+            ctx.fillRect(bx + 15, by + 15, bs - 30, bs - 30);
+            // Green center
+            ctx.fillStyle = COLORS.block;
+            ctx.fillRect(bx + 22, by + 22, bs - 44, bs - 44);
+        }
     }
 
-    // Objects (sorted by size for depth)
-    objects.filter(o=>!o.falling).sort((a,b)=>a.size-b.size).forEach(o=>drawObj(o));
-    // Falling (shrinking)
-    objects.filter(o=>o.falling).forEach(o => {
-        const scale = 1-o.fallProgress;
-        ctx.globalAlpha = scale;
+    // Roads (between blocks)
+    ctx.fillStyle = COLORS.road;
+    for (let x = bs - 15; x < MAP_W; x += bs) ctx.fillRect(x, 0, 30, MAP_H);
+    for (let y = bs - 15; y < MAP_H; y += bs) ctx.fillRect(0, y, MAP_W, 30);
+    // Road markings
+    ctx.fillStyle = '#bbb';
+    for (let x = bs; x < MAP_W; x += bs) for (let y = 0; y < MAP_H; y += 30) ctx.fillRect(x-2, y, 4, 18);
+    for (let y = bs; y < MAP_H; y += bs) for (let x = 0; x < MAP_W; x += 30) ctx.fillRect(x, y-2, 18, 4);
+
+    // Objects (not falling)
+    objects.filter(o => !o.falling).forEach(o => drawObj(o));
+
+    // Falling objects (shrinking into hole)
+    objects.filter(o => o.falling).forEach(o => {
+        const scale = 1 - o.fallT;
         ctx.save();
         ctx.translate(o.x, o.y);
         ctx.scale(scale, scale);
         ctx.translate(-o.x, -o.y);
+        ctx.globalAlpha = scale;
         drawObj(o);
         ctx.restore();
         ctx.globalAlpha = 1;
     });
 
-    // Holes (bots first, player on top)
+    // Holes (bots then player)
     bots.forEach(b => drawHole(b));
     drawHole(player);
-
-    // Particles
-    particles.forEach(p => { ctx.globalAlpha=p.life; ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2); ctx.fill(); });
-    ctx.globalAlpha=1;
 
     ctx.restore();
     drawHUD();
@@ -233,92 +233,98 @@ function draw() {
 }
 
 function drawHole(h) {
-    const c = HOLE_COLORS[h.colorIdx];
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
-    ctx.beginPath(); ctx.ellipse(h.x+3,h.y+4,h.radius,h.radius*0.8,0,0,Math.PI*2); ctx.fill();
-    // Main hole
-    const g = ctx.createRadialGradient(h.x,h.y,0,h.x,h.y,h.radius);
-    g.addColorStop(0, c.dark);
-    g.addColorStop(0.7, c.light);
-    g.addColorStop(1, c.rim+'60');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.ellipse(h.x,h.y,h.radius,h.radius*0.8,0,0,Math.PI*2); ctx.fill();
-    // Rim
-    ctx.strokeStyle = c.rim; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.ellipse(h.x,h.y,h.radius,h.radius*0.8,0,0,Math.PI*2); ctx.stroke();
-    // Spiral
-    ctx.strokeStyle = c.rim+'30'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(h.x,h.y,h.radius*0.4,animFrame*0.04,animFrame*0.04+Math.PI*1.3); ctx.stroke();
-    // Name
-    ctx.fillStyle = c.rim; ctx.font = 'bold 11px Nunito'; ctx.textAlign = 'center';
-    ctx.fillText(h.name, h.x, h.y-h.radius*0.8-10);
+    // Simple black circle (like real hole.io)
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(h.x, h.y, h.radius, 0, Math.PI*2); ctx.fill();
+    // Thin colored rim
+    ctx.strokeStyle = h.color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(h.x, h.y, h.radius, 0, Math.PI*2); ctx.stroke();
+    // Name above
+    ctx.fillStyle = h.color === '#1a1a1a' ? '#fff' : h.color;
+    ctx.font = 'bold 12px Nunito'; ctx.textAlign = 'center';
+    ctx.fillText(h.name, h.x, h.y - h.radius - 8);
 }
 
 function drawObj(o) {
-    const x=o.x, y=o.y, s=o.size;
-    if (o.type==='lamp') {
-        ctx.fillStyle = '#9e9e9e'; ctx.fillRect(x-2,y-s,4,s);
-        ctx.fillStyle = '#ffd600'; ctx.beginPath(); ctx.arc(x,y-s,4,0,Math.PI*2); ctx.fill();
-    } else if (o.type==='bush') {
-        ctx.fillStyle = o.color;
-        ctx.beginPath(); ctx.ellipse(x,y,s*0.6,s*0.5,0,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#81c784';
-        ctx.beginPath(); ctx.ellipse(x-s*0.2,y-s*0.15,s*0.3,s*0.25,0,0,Math.PI*2); ctx.fill();
-    } else if (o.type==='bench') {
-        ctx.fillStyle = '#6d4c41'; ctx.beginPath(); ctx.roundRect(x-s*0.5,y-s*0.2,s,s*0.4,3); ctx.fill();
-        ctx.fillStyle = '#5d4037'; ctx.fillRect(x-s*0.4,y+s*0.1,4,s*0.3); ctx.fillRect(x+s*0.3,y+s*0.1,4,s*0.3);
-    } else if (o.type==='car') {
-        // Smooth rounded car
-        ctx.fillStyle = o.color;
-        ctx.beginPath(); ctx.roundRect(x-s*0.5,y-s*0.25,s,s*0.5,s*0.15); ctx.fill();
-        ctx.fillStyle = '#1565c0';
-        ctx.beginPath(); ctx.roundRect(x-s*0.3,y-s*0.2,s*0.6,s*0.35,s*0.1); ctx.fill();
-        // Windows
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.beginPath(); ctx.roundRect(x-s*0.2,y-s*0.15,s*0.18,s*0.22,3); ctx.fill();
-        ctx.beginPath(); ctx.roundRect(x+s*0.05,y-s*0.15,s*0.18,s*0.22,3); ctx.fill();
-        // Wheels
-        ctx.fillStyle = '#333';
-        ctx.beginPath(); ctx.arc(x-s*0.3,y+s*0.25,s*0.1,0,Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(x+s*0.3,y+s*0.25,s*0.1,0,Math.PI*2); ctx.fill();
-    } else if (o.type==='tree') {
-        ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.roundRect(x-4,y-s*0.1,8,s*0.6,3); ctx.fill();
-        ctx.fillStyle = o.color;
-        ctx.beginPath(); ctx.arc(x,y-s*0.3,s*0.45,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#2e7d32';
-        ctx.beginPath(); ctx.arc(x-s*0.15,y-s*0.4,s*0.25,0,Math.PI*2); ctx.fill();
-    } else if (o.type==='house') {
-        // Cute round house
-        ctx.fillStyle = o.color;
-        ctx.beginPath(); ctx.roundRect(x-s*0.45,y-s*0.3,s*0.9,s*0.65,8); ctx.fill();
-        // Roof
-        ctx.fillStyle = '#e65100';
-        ctx.beginPath(); ctx.moveTo(x-s*0.55,y-s*0.3); ctx.lineTo(x,y-s*0.7); ctx.lineTo(x+s*0.55,y-s*0.3); ctx.closePath(); ctx.fill();
-        // Door
-        ctx.fillStyle = '#4e342e';
-        ctx.beginPath(); ctx.roundRect(x-s*0.1,y,s*0.2,s*0.3,4); ctx.fill();
-        // Window
+    const x = o.x, y = o.y;
+    if (o.type === 'lamp') {
+        ctx.fillStyle = '#78909c';
+        ctx.fillRect(x-1.5, y-8, 3, 10);
         ctx.fillStyle = '#fff9c4';
-        ctx.beginPath(); ctx.roundRect(x+s*0.15,y-s*0.15,s*0.18,s*0.18,3); ctx.fill();
-        ctx.beginPath(); ctx.roundRect(x-s*0.35,y-s*0.15,s*0.18,s*0.18,3); ctx.fill();
-    } else if (o.type==='building') {
+        ctx.beginPath(); ctx.arc(x, y-8, 4, 0, Math.PI*2); ctx.fill();
+    } else if (o.type === 'tree') {
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.beginPath(); ctx.ellipse(x, y+8, 10, 5, 0, 0, Math.PI*2); ctx.fill();
+        // Trunk
+        ctx.fillStyle = '#6d4c41';
+        ctx.fillRect(x-3, y-2, 6, 14);
+        // Foliage (circle)
         ctx.fillStyle = o.color;
-        ctx.beginPath(); ctx.roundRect(x-s*0.3,y-s*0.8,s*0.6,s,10); ctx.fill();
-        // Windows (rounded)
-        ctx.fillStyle = 'rgba(255,255,100,0.4)';
-        for (let wy=0;wy<4;wy++) for (let wx=0;wx<2;wx++) {
-            ctx.beginPath(); ctx.roundRect(x-s*0.2+wx*s*0.22, y-s*0.7+wy*s*0.2, s*0.14, s*0.12, 3); ctx.fill();
-        }
-    } else if (o.type==='tower') {
+        ctx.beginPath(); ctx.arc(x, y-8, 12, 0, Math.PI*2); ctx.fill();
+    } else if (o.type === 'car') {
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.beginPath(); ctx.ellipse(x, y+6, 12, 5, 0, 0, Math.PI*2); ctx.fill();
+        // Body
         ctx.fillStyle = o.color;
-        ctx.beginPath(); ctx.roundRect(x-s*0.2,y-s,s*0.4,s*1.2,6); ctx.fill();
-        // Antenna
-        ctx.fillStyle = '#666'; ctx.fillRect(x-1.5,y-s*1.2,3,s*0.2);
-        ctx.fillStyle = '#f44336'; ctx.beginPath(); ctx.arc(x,y-s*1.2,4,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(x-11, y-5, 22, 12, 4); ctx.fill();
+        // Top
+        ctx.fillStyle = o.color === '#fff' ? '#e0e0e0' : o.color;
+        ctx.beginPath(); ctx.roundRect(x-7, y-9, 14, 7, 3); ctx.fill();
         // Windows
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        for (let wy=0;wy<6;wy++) { ctx.beginPath(); ctx.roundRect(x-s*0.12,y-s*0.9+wy*s*0.17,s*0.24,s*0.08,2); ctx.fill(); }
+        ctx.fillStyle = 'rgba(100,200,255,0.5)';
+        ctx.fillRect(x-5, y-8, 5, 5);
+        ctx.fillRect(x+1, y-8, 5, 5);
+    } else if (o.type === 'house') {
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.08)';
+        ctx.fillRect(x-13, y+10, 28, 6);
+        // Walls
+        ctx.fillStyle = o.color;
+        ctx.fillRect(x-13, y-10, 26, 22);
+        // Roof
+        ctx.fillStyle = '#d84315';
+        ctx.beginPath(); ctx.moveTo(x-16, y-10); ctx.lineTo(x, y-22); ctx.lineTo(x+16, y-10); ctx.fill();
+        // Door
+        ctx.fillStyle = '#5d4037';
+        ctx.beginPath(); ctx.roundRect(x-4, y+2, 8, 10, 2); ctx.fill();
+        // Window
+        ctx.fillStyle = '#bbdefb';
+        ctx.fillRect(x+5, y-5, 6, 6);
+        ctx.fillRect(x-12, y-5, 6, 6);
+    } else if (o.type === 'building') {
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.fillRect(x-16, y+15, 34, 6);
+        // Main
+        ctx.fillStyle = o.color;
+        ctx.fillRect(x-16, y-25, 32, 42);
+        // Windows
+        ctx.fillStyle = '#fff9c4';
+        for (let wy = 0; wy < 4; wy++) for (let wx = 0; wx < 3; wx++) {
+            ctx.fillRect(x-12+wx*10, y-20+wy*10, 6, 6);
+        }
+    } else if (o.type === 'tower') {
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.fillRect(x-14, y+22, 30, 8);
+        // Main
+        ctx.fillStyle = o.color;
+        ctx.fillRect(x-14, y-40, 28, 65);
+        // Top section (lighter)
+        ctx.fillStyle = '#78909c';
+        ctx.fillRect(x-10, y-48, 20, 12);
+        // Antenna
+        ctx.fillStyle = '#455a64';
+        ctx.fillRect(x-1, y-56, 3, 10);
+        ctx.fillStyle = '#f44336';
+        ctx.beginPath(); ctx.arc(x, y-56, 3, 0, Math.PI*2); ctx.fill();
+        // Windows
+        ctx.fillStyle = 'rgba(255,255,200,0.4)';
+        for (let wy = 0; wy < 6; wy++) for (let wx = 0; wx < 2; wx++) {
+            ctx.fillRect(x-8+wx*12, y-35+wy*10, 7, 6);
+        }
     }
 }
 
@@ -326,86 +332,90 @@ function drawObj(o) {
 
 
 function drawHUD() {
-    // Timer
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.roundRect(W/2-30,10,60,36,18); ctx.fill();
-    ctx.fillStyle = timeLeft<=10?'#ff1744':'#fff'; ctx.font = 'bold 16px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(timeLeft+'s', W/2, 28);
-    // Eaten
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.roundRect(12,12,100,32,12); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 13px Nunito'; ctx.textAlign = 'left';
-    ctx.fillText('Eaten: '+player.eaten, 22, 28);
-    // Size
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.roundRect(W-112,12,100,32,12); ctx.fill();
-    ctx.fillStyle = '#00e5ff'; ctx.font = 'bold 13px Nunito'; ctx.textAlign = 'right';
-    ctx.fillText('Size: '+Math.floor(player.radius), W-22, 28);
-    // Leaderboard
+    // Timer (top center)
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#333'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(W/2, 32, 24, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = timeLeft<=10 ? '#e53935' : '#333'; ctx.font = 'bold 16px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(timeLeft, W/2, 32);
+    // Score (top left)
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(12, 12, 90, 34, 17); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#333'; ctx.font = 'bold 13px Nunito'; ctx.textAlign = 'left';
+    ctx.fillText(player.eaten + ' eaten', 24, 30);
+    // Ranking (top right)
     const all = [player,...bots].sort((a,b)=>b.eaten-a.eaten);
-    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.roundRect(W-130,55,118,all.length*20+22,8); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 10px Nunito'; ctx.textAlign = 'right';
-    ctx.fillText('RANKING', W-22, 70);
-    all.forEach((h,i) => { ctx.fillStyle = HOLE_COLORS[h.colorIdx].rim; ctx.font = (h.isPlayer?'bold ':'')+' 10px Nunito'; ctx.fillText((i+1)+'. '+h.name+' ('+h.eaten+')', W-22, 88+i*20); });
+    const rank = all.findIndex(h=>h.isPlayer)+1;
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(W-100, 12, 88, 34, 17); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#333'; ctx.font = 'bold 13px Nunito'; ctx.textAlign = 'right';
+    ctx.fillText('#'+rank+' / '+(BOT_COUNT+1), W-20, 30);
     // Joystick
     if (joystick.active) {
-        ctx.globalAlpha=0.3; ctx.strokeStyle='#333'; ctx.lineWidth=2;
-        ctx.beginPath(); ctx.arc(joystick.startX,joystick.startY,50,0,Math.PI*2); ctx.stroke();
-        ctx.fillStyle='#333'; ctx.beginPath(); ctx.arc(joystick.startX+joystick.dx*0.4,joystick.startY+joystick.dy*0.4,18,0,Math.PI*2); ctx.fill();
-        ctx.globalAlpha=1;
+        ctx.globalAlpha = 0.3; ctx.fillStyle = '#333';
+        ctx.beginPath(); ctx.arc(joystick.sx, joystick.sy, 50, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#555';
+        ctx.beginPath(); ctx.arc(joystick.sx+joystick.dx*0.4, joystick.sy+joystick.dy*0.4, 22, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
     }
 }
 
 function drawMenu() {
-    ctx.fillStyle = 'rgba(0,0,0,0.82)'; ctx.fillRect(0,0,W,H);
-    ctx.fillStyle = '#00e5ff'; ctx.font = 'bold 40px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 15; ctx.fillText('HOLE.IO', W/2, H/2-100); ctx.shadowBlur = 0;
-    ctx.fillStyle = '#bbb'; ctx.font = '14px Nunito';
-    ctx.fillText('Gerakin lobang, makan semuanya!', W/2, H/2-60);
-    ctx.fillStyle = '#888'; ctx.font = '12px Nunito';
-    ctx.fillText('Makin gede lobangnya, makin gede yang bisa dimakan', W/2, H/2-35);
-    ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 10; ctx.fillStyle = '#00e5ff';
-    ctx.beginPath(); ctx.roundRect(W/2-90,H/2-5,180,50,25); ctx.fill(); ctx.shadowBlur = 0;
-    ctx.fillStyle = '#000'; ctx.font = 'bold 20px Nunito'; ctx.fillText('MAIN!', W/2, H/2+20);
-    ctx.fillStyle = '#555'; ctx.font = '11px Nunito';
-    ctx.fillText('WASD/Arrow/Joystick = gerakin lobang', W/2, H/2+65);
-    ctx.fillText('90 detik — makan sebanyak-banyaknya!', W/2, H/2+82);
-    if (highScore>0) { ctx.fillStyle='#ffd600'; ctx.font='bold 13px Nunito'; ctx.fillText('Best: '+highScore, W/2, H/2+110); }
+    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 48px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('HOLE.IO', W/2, H/2-90);
+    ctx.fillStyle = '#ddd'; ctx.font = '15px Nunito';
+    ctx.fillText('Gerakin lobang, makan seisi kota!', W/2, H/2-45);
+    ctx.fillStyle = '#4caf50';
+    ctx.beginPath(); ctx.roundRect(W/2-90, H/2-8, 180, 52, 26); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 22px Nunito'; ctx.fillText('MAIN!', W/2, H/2+18);
+    ctx.fillStyle = '#aaa'; ctx.font = '12px Nunito';
+    ctx.fillText('WASD / Arrow / Joystick', W/2, H/2+60);
+    ctx.fillText('90 detik — makan sebanyak-banyaknya!', W/2, H/2+77);
+    if (highScore > 0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 13px Nunito'; ctx.fillText('Best: '+highScore+' eaten', W/2, H/2+105); }
 }
 
 function drawEnd() {
-    ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0,0,W,H);
     const all = [player,...bots].sort((a,b)=>b.eaten-a.eaten);
     const rank = all.findIndex(h=>h.isPlayer)+1;
-    ctx.fillStyle = rank===1?'#ffd600':'#fff'; ctx.font = 'bold 36px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(rank===1?'JUARA 1!':'Peringkat #'+rank, W/2, H/2-65);
-    ctx.fillStyle = '#fff'; ctx.font = '16px Nunito';
-    ctx.fillText('Dimakan: '+player.eaten+' | Size: '+Math.floor(player.radius), W/2, H/2-25);
-    if (player.eaten>=highScore&&player.eaten>0) { ctx.fillStyle='#ffd600'; ctx.font='bold 13px Nunito'; ctx.fillText('REKOR BARU!', W/2, H/2); }
-    ctx.shadowColor='#00e5ff'; ctx.shadowBlur=10; ctx.fillStyle='#00e5ff';
-    ctx.beginPath(); ctx.roundRect(W/2-90,H/2+20,180,48,24); ctx.fill(); ctx.shadowBlur=0;
-    ctx.fillStyle='#000'; ctx.font='bold 18px Nunito'; ctx.fillText('MAIN LAGI', W/2, H/2+44);
+    ctx.fillStyle = rank===1 ? '#ffd600' : '#fff'; ctx.font = 'bold 42px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(rank===1 ? 'JUARA 1!' : '#'+rank, W/2, H/2-70);
+    ctx.fillStyle = '#fff'; ctx.font = '18px Nunito';
+    ctx.fillText('Dimakan: '+player.eaten, W/2, H/2-25);
+    if (player.eaten >= highScore && player.eaten>0) { ctx.fillStyle = '#ffd600'; ctx.font = 'bold 14px Nunito'; ctx.fillText('REKOR BARU!', W/2, H/2); }
+    ctx.fillStyle = '#4caf50';
+    ctx.beginPath(); ctx.roundRect(W/2-90, H/2+20, 180, 48, 24); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 18px Nunito'; ctx.fillText('MAIN LAGI', W/2, H/2+44);
+    // Full leaderboard
+    ctx.font = '14px Nunito';
+    all.forEach((h, i) => {
+        ctx.fillStyle = h.isPlayer ? '#ffd600' : '#aaa';
+        ctx.fillText((i+1)+'. '+h.name+' — '+h.eaten+' eaten', W/2, H/2+85+i*22);
+    });
 }
 
 // ===== INPUT =====
-document.addEventListener('keydown', e => { pressedKeys[e.key]=true; e.preventDefault(); });
-document.addEventListener('keyup', e => { pressedKeys[e.key]=false; });
+document.addEventListener('keydown', e => { pressedKeys[e.key] = true; e.preventDefault(); });
+document.addEventListener('keyup', e => { pressedKeys[e.key] = false; });
 
 canvas.addEventListener('touchstart', e => {
-    const t=e.touches[0];
-    if (state==='menu') { if (t.clientX>W/2-90&&t.clientX<W/2+90&&t.clientY>H/2-5&&t.clientY<H/2+45) initGame(); }
+    const t = e.touches[0];
+    if (state==='menu') { if (t.clientX>W/2-90&&t.clientX<W/2+90&&t.clientY>H/2-8&&t.clientY<H/2+44) initGame(); }
     else if (state==='dead') { if (t.clientX>W/2-90&&t.clientX<W/2+90&&t.clientY>H/2+20&&t.clientY<H/2+68) initGame(); }
-    else { joystick.active=true; joystick.startX=t.clientX; joystick.startY=t.clientY; joystick.dx=0; joystick.dy=0; joystick.id=t.identifier; }
+    else { joystick.active=true; joystick.sx=t.clientX; joystick.sy=t.clientY; joystick.dx=0; joystick.dy=0; }
     e.preventDefault();
 }, {passive:false});
-canvas.addEventListener('touchmove', e => { for(const t of e.changedTouches){if(joystick.active&&t.identifier===joystick.id){joystick.dx=t.clientX-joystick.startX;joystick.dy=t.clientY-joystick.startY;}} e.preventDefault(); }, {passive:false});
+canvas.addEventListener('touchmove', e => { const t=e.touches[0]; if(joystick.active){joystick.dx=t.clientX-joystick.sx; joystick.dy=t.clientY-joystick.sy;} e.preventDefault(); }, {passive:false});
 canvas.addEventListener('touchend', e => { joystick.active=false; joystick.dx=0; joystick.dy=0; e.preventDefault(); }, {passive:false});
 canvas.addEventListener('click', e => {
-    if (state==='menu') { if (e.clientX>W/2-90&&e.clientX<W/2+90&&e.clientY>H/2-5&&e.clientY<H/2+45) initGame(); }
-    if (state==='dead') { if (e.clientX>W/2-90&&e.clientX<W/2+90&&e.clientY>H/2+20&&e.clientY<H/2+68) initGame(); }
+    if (state==='menu') { if(e.clientX>W/2-90&&e.clientX<W/2+90&&e.clientY>H/2-8&&e.clientY<H/2+44) initGame(); }
+    if (state==='dead') { if(e.clientX>W/2-90&&e.clientX<W/2+90&&e.clientY>H/2+20&&e.clientY<H/2+68) initGame(); }
 });
 
-// ===== GAME LOOP =====
+// ===== START =====
 function gameLoop() { requestAnimationFrame(gameLoop); if (state==='playing') update(); else { animFrame++; draw(); } }
 state = 'menu';
-player = createHole(MAP_W/2,MAP_H/2,0,true,'Kamu');
+player = createHole(MAP_W/2, MAP_H/2, '#1a1a1a', true, 'Kamu');
 bots = []; objects = []; particles = [];
 requestAnimationFrame(gameLoop);
 </script>
