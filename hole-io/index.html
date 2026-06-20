@@ -25,7 +25,7 @@ document.addEventListener('touchmove', e => e.preventDefault(), { passive: false
 // ===== CONFIG =====
 const MAP_W = 2000, MAP_H = 2000;
 const BASE_RADIUS = 25;
-const SPEED = 4;
+const SPEED = 6;
 const BOT_COUNT = 4;
 const GAME_TIME = 90;
 
@@ -102,8 +102,11 @@ function endGame() {
 
 // ===== PHYSICS =====
 function moveHole(hole, mx, my) {
-    hole.x += mx * SPEED;
-    hole.y += my * SPEED;
+    // Smooth interpolation (like snake game)
+    const targetX = hole.x + mx * SPEED;
+    const targetY = hole.y + my * SPEED;
+    hole.x += (targetX - hole.x) * 0.4;
+    hole.y += (targetY - hole.y) * 0.4;
     hole.x = Math.max(hole.radius, Math.min(MAP_W - hole.radius, hole.x));
     hole.y = Math.max(hole.radius, Math.min(MAP_H - hole.radius, hole.y));
 }
@@ -112,22 +115,21 @@ function eatCheck(hole) {
     for (let i = objects.length - 1; i >= 0; i--) {
         const o = objects[i];
         if (o.falling) continue;
-        if (o.size > hole.radius * 0.7) continue;
+        if (o.size > hole.radius) continue; // Can eat anything smaller than radius
         const d = Math.hypot(o.x - hole.x, o.y - hole.y);
-        if (d < hole.radius * 0.5) {
+        if (d < hole.radius) { // Eat when object center is inside hole
             o.falling = true;
             o.fallT = 0;
-            o.holeRef = hole;
             hole.eaten++;
-            hole.radius += 0.4 + o.size * 0.015;
+            hole.radius += 0.5 + o.size * 0.03;
         }
     }
 }
 
 function updateBot(bot) {
-    let tx = bot.x, ty = bot.y, best = 800;
+    let tx = bot.x, ty = bot.y, best = 600;
     objects.forEach(o => {
-        if (o.falling || o.size > bot.radius*0.7) return;
+        if (o.falling || o.size > bot.radius) return;
         const d = Math.hypot(o.x-bot.x, o.y-bot.y);
         if (d < best) { best = d; tx = o.x; ty = o.y; }
     });
