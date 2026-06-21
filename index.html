@@ -7,381 +7,88 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #1b1040;
-            min-height: 100vh;
-            font-family: 'Nunito', 'Poppins', -apple-system, sans-serif;
-            overflow-x: hidden;
-        }
+        body { background: #1b1040; min-height: 100vh; font-family: 'Nunito', sans-serif; overflow-x: hidden; }
 
-        /* Floating background shapes */
-        .bg-shape {
-            position: fixed;
-            border-radius: 50%;
-            opacity: 0.08;
-            pointer-events: none;
-            animation: float 8s ease-in-out infinite;
-        }
-        .bg-shape:nth-child(1) { width: 300px; height: 300px; background: #ff6b6b; top: -50px; left: -50px; animation-delay: 0s; }
-        .bg-shape:nth-child(2) { width: 200px; height: 200px; background: #feca57; bottom: 10%; right: -30px; animation-delay: 2s; }
-        .bg-shape:nth-child(3) { width: 250px; height: 250px; background: #48dbfb; top: 40%; left: -80px; animation-delay: 4s; }
-        .bg-shape:nth-child(4) { width: 180px; height: 180px; background: #ff9ff3; bottom: -30px; left: 40%; animation-delay: 1s; }
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(5deg); }
-        }
+        .header { text-align: center; padding: 40px 20px 20px; }
+        .header h1 { font-size: clamp(2rem, 7vw, 3rem); color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.3); }
+        .header h1 span { display: inline-block; animation: wiggle 3s ease-in-out infinite; }
+        .header h1 span:nth-child(1){color:#ff6b6b;animation-delay:0s}.header h1 span:nth-child(2){color:#feca57;animation-delay:.1s}.header h1 span:nth-child(3){color:#48dbfb;animation-delay:.2s}.header h1 span:nth-child(4){color:#ff9ff3;animation-delay:.3s}
+        @keyframes wiggle { 0%,100%{transform:translateY(0)} 25%{transform:translateY(-4px) rotate(-2deg)} 75%{transform:translateY(2px) rotate(1deg)} }
 
-        /* Header */
-        .header {
-            text-align: center;
-            padding: 50px 20px 30px;
-            position: relative;
-        }
-        .header h1 {
-            font-size: clamp(2.2rem, 8vw, 3.5rem);
-            color: #fff;
-            text-shadow: 2px 2px 0px rgba(0,0,0,0.3);
-        }
-        .header h1 span {
-            display: inline-block;
-            animation: wiggle 3s ease-in-out infinite;
-        }
-        .header h1 span:nth-child(1) { color: #ff6b6b; animation-delay: 0s; }
-        .header h1 span:nth-child(2) { color: #feca57; animation-delay: 0.1s; }
-        .header h1 span:nth-child(3) { color: #48dbfb; animation-delay: 0.2s; }
-        .header h1 span:nth-child(4) { color: #ff9ff3; animation-delay: 0.3s; }
-        .header h1 span:nth-child(5) { color: #54a0ff; animation-delay: 0.4s; }
-        .header h1 span:nth-child(6) { color: #5f27cd; animation-delay: 0.5s; }
-        .header h1 span:nth-child(7) { color: #00d2d3; animation-delay: 0.6s; }
-        .header h1 span:nth-child(8) { color: #ff6b6b; animation-delay: 0.7s; }
-        .header h1 span:nth-child(9) { color: #feca57; animation-delay: 0.8s; }
-        @keyframes wiggle {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            25% { transform: translateY(-5px) rotate(-3deg); }
-            75% { transform: translateY(3px) rotate(2deg); }
-        }
-        .subtitle {
-            color: rgba(255,255,255,0.8);
-            font-size: clamp(0.95rem, 3vw, 1.15rem);
-            margin-top: 10px;
-            text-shadow: 1px 1px 0px rgba(0,0,0,0.3);
-        }
+        /* TABS */
+        .tabs { display: flex; justify-content: center; gap: 0; margin: 15px auto 0; max-width: 400px; }
+        .tab { flex: 1; padding: 14px 10px; text-align: center; font-size: 0.95rem; font-weight: 800; cursor: pointer; border-radius: 16px 16px 0 0; transition: all 0.3s; color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.04); }
+        .tab:hover { color: rgba(255,255,255,0.8); }
+        .tab.active { color: #fff; background: rgba(255,255,255,0.1); border-bottom: 3px solid var(--tc); }
+        .tab-games { --tc: #48dbfb; }
+        .tab-belajar { --tc: #feca57; }
 
-        .section-label {
-            max-width: 540px;
-            margin: 0 auto 10px;
-            padding: 10px 20px;
-            border-radius: 14px;
-            font-size: 1.1rem;
-            font-weight: 800;
-            text-align: center;
-        }
+        /* CONTENT */
+        .tab-content { display: none; padding: 20px 15px 40px; max-width: 500px; margin: 0 auto; }
+        .tab-content.active { display: block; }
 
-        /* Games container */
-        .games {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 18px;
-            padding: 20px 20px 60px;
-            max-width: 540px;
-            margin: 0 auto;
-        }
+        /* CARDS */
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+        .card { background: rgba(255,255,255,0.07); border-radius: 18px; overflow: hidden; text-decoration: none; transition: transform 0.25s, box-shadow 0.25s; border: 2px solid transparent; position: relative; }
+        .card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-color: var(--c); }
+        .card:active { transform: scale(0.96); }
+        .card-top { height: 80px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .card-top::before { content:''; position:absolute; inset:0; background:var(--bg); opacity:0.25; }
+        .card-icon { font-size: 2.8rem; position: relative; z-index: 1; }
+        .card-body { padding: 12px 14px 14px; }
+        .card-title { color: #fff; font-size: 0.95rem; font-weight: 800; margin-bottom: 3px; }
+        .card-desc { color: rgba(255,255,255,0.55); font-size: 0.72rem; line-height: 1.3; }
+        .ribbon { position: absolute; top: 8px; right: -22px; background: var(--c); color: #fff; font-size: 0.55rem; font-weight: 800; padding: 2px 22px; transform: rotate(35deg); }
 
-        /* Game card */
-        .card {
-            width: 100%;
-            background: rgba(255,255,255,0.08);
-            border-radius: 20px;
-            overflow: hidden;
-            text-decoration: none;
-            transition: transform 0.3s, box-shadow 0.3s;
-            border: 2px solid transparent;
-            position: relative;
-        }
-        .card:hover {
-            transform: translateY(-6px) rotate(-1deg);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
-            border-color: var(--c);
-        }
-        .card:active {
-            transform: scale(0.97);
-        }
-        .card.coming-soon {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-        .card.coming-soon .card-top::after {
-            content: 'COMING SOON';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 0.8rem;
-            font-weight: 800;
-            color: #fff;
-            background: rgba(0,0,0,0.6);
-            padding: 6px 14px;
-            border-radius: 8px;
-            z-index: 2;
-            letter-spacing: 1px;
-        }
+        .footer { text-align: center; padding: 30px; color: rgba(255,255,255,0.2); font-size: 0.7rem; }
+        .footer a { color: rgba(255,255,255,0.35); text-decoration: none; }
 
-        .card-top {
-            height: 100px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
-        .card-top::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: var(--bg);
-            opacity: 0.3;
-        }
-        .card-icon {
-            font-size: 3.5rem;
-            position: relative;
-            z-index: 1;
-            animation: bounce-icon 2s ease-in-out infinite;
-            filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3));
-        }
-        @keyframes bounce-icon {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-8px) scale(1.05); }
-        }
-
-        .card-body {
-            padding: 14px 16px 18px;
-        }
-        .card-title {
-            color: #fff;
-            font-size: 1.1rem;
-            margin-bottom: 4px;
-            text-shadow: 1px 1px 0px rgba(0,0,0,0.3);
-        }
-        .card-desc {
-            color: rgba(255,255,255,0.65);
-            font-size: 0.78rem;
-            line-height: 1.4;
-            margin-bottom: 10px;
-        }
-        .card-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .tag {
-            font-size: 0.65rem;
-            padding: 2px 8px;
-            border-radius: 20px;
-            background: var(--c);
-            color: #fff;
-            font-weight: bold;
-        }
-
-        /* Play ribbon */
-        .play-ribbon {
-            position: absolute;
-            top: 10px;
-            right: -26px;
-            background: var(--c);
-            color: #fff;
-            font-size: 0.6rem;
-            font-weight: bold;
-            padding: 3px 26px;
-            transform: rotate(35deg);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        }
-
-        /* CHARACTERS floating around */
-        .floater {
-            position: fixed;
-            font-size: 2rem;
-            opacity: 0.15;
-            pointer-events: none;
-            animation: drift 12s linear infinite;
-        }
-        @keyframes drift {
-            0% { transform: translateY(100vh) rotate(0deg); }
-            100% { transform: translateY(-100px) rotate(360deg); }
-        }
-
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 30px;
-            color: rgba(255,255,255,0.25);
-            font-size: 0.75rem;
-        }
-        .footer a { color: rgba(255,255,255,0.4); text-decoration: none; }
-
-        @media (max-width: 640px) {
-            .games { max-width: 100%; padding: 10px 15px 40px; gap: 12px; }
-        }
+        @media (max-width: 400px) { .grid { gap: 10px; } .card-top { height: 65px; } .card-icon { font-size: 2.2rem; } }
     </style>
 </head>
 <body>
-    <!-- Background shapes -->
-    <div class="bg-shape"></div>
-    <div class="bg-shape"></div>
-    <div class="bg-shape"></div>
-    <div class="bg-shape"></div>
-
-    <!-- Floating emojis -->
-    <div class="floater" style="left:5%; animation-delay:0s; animation-duration:15s;">🐍</div>
-    <div class="floater" style="left:25%; animation-delay:3s; animation-duration:18s;">🧟</div>
-    <div class="floater" style="left:50%; animation-delay:6s; animation-duration:14s;">🦖</div>
-    <div class="floater" style="left:75%; animation-delay:2s; animation-duration:20s;">🎮</div>
-    <div class="floater" style="left:90%; animation-delay:8s; animation-duration:16s;">⭐</div>
-
     <header class="header">
-        <h1>
-            <span>G</span><span>a</span><span>m</span><span>e</span>
-            <span> </span>
-            <span>A</span><span>r</span><span>e</span><span>n</span><span>a</span><span>!</span>
-        </h1>
-        <p class="subtitle">Pilih game favoritmu, langsung main!</p>
+        <h1><span>G</span><span>a</span><span>m</span><span>e</span> <span>A</span><span>r</span><span>e</span><span>n</span><span>a</span><span>!</span></h1>
     </header>
 
-    <!-- SECTION: BELAJAR TK -->
-    <div class="section-label" style="background: #fff3e0; color: #e65100;">📚 Belajar TK</div>
-    <main class="games">
-        <a href="belajar-huruf/" class="card" style="--c: #ff6d00; --bg: linear-gradient(135deg, #ff6d00, #e65100);">
-            <div class="play-ribbon" style="background:#ff6d00">BELAJAR!</div>
-            <div class="card-top"><div class="card-icon">🔤</div></div>
-            <div class="card-body">
-                <h2 class="card-title">Huruf ABC</h2>
-                <p class="card-desc">Kenal huruf A-Z dari gambar!</p>
-                <div class="card-tags"><span class="tag" style="background:#ff6d00">Huruf</span><span class="tag" style="background:#ff6d00">Quiz</span></div>
-            </div>
-        </a>
-        <a href="belajar-angka/" class="card" style="--c: #43a047; --bg: linear-gradient(135deg, #43a047, #1b5e20);">
-            <div class="play-ribbon" style="background:#43a047">BELAJAR!</div>
-            <div class="card-top"><div class="card-icon">🔢</div></div>
-            <div class="card-body">
-                <h2 class="card-title">Angka 123</h2>
-                <p class="card-desc">Hitung emoji, pilih angka!</p>
-                <div class="card-tags"><span class="tag" style="background:#43a047">Angka</span><span class="tag" style="background:#43a047">Hitung</span></div>
-            </div>
-        </a>
-        <a href="belajar-warna/" class="card" style="--c: #e91e63; --bg: linear-gradient(135deg, #e91e63, #880e4f);">
-            <div class="play-ribbon" style="background:#e91e63">BELAJAR!</div>
-            <div class="card-top"><div class="card-icon">🎨</div></div>
-            <div class="card-body">
-                <h2 class="card-title">Warna</h2>
-                <p class="card-desc">Tebak nama warna yang muncul!</p>
-                <div class="card-tags"><span class="tag" style="background:#e91e63">Warna</span><span class="tag" style="background:#e91e63">TK</span></div>
-            </div>
-        </a>
-    </main>
+    <!-- TABS -->
+    <div class="tabs">
+        <div class="tab tab-games active" onclick="switchTab('games')">🎮 Game Seru</div>
+        <div class="tab tab-belajar" onclick="switchTab('belajar')">📚 Belajar TK</div>
+    </div>
 
-    <!-- SECTION: GAME SERU -->
-    <div class="section-label" style="background: rgba(255,255,255,0.1); color: #fff;">🎮 Game Seru</div>
-    <main class="games">
-        <!-- Snake -->
-        <a href="snake-game/" class="card" style="--c: #10b981; --bg: linear-gradient(135deg, #10b981, #065f46);">
-            <div class="play-ribbon">MAIN!</div>
-            <div class="card-top">
-                <div class="card-icon">🐍</div>
-            </div>
-            <div class="card-body">
-                <h2 class="card-title">Snake Arena</h2>
-                <p class="card-desc">Jadi ular paling gede! Makan ular lain, pilih skin naga!</p>
-                <div class="card-tags">
-                    <span class="tag">Slither.io</span>
-                    <span class="tag">10 Bot</span>
-                    <span class="tag">Skin Naga</span>
-                </div>
-            </div>
-        </a>
+    <!-- TAB: GAME SERU -->
+    <div class="tab-content active" id="tab-games">
+        <div class="grid">
+            <a href="snake-game/" class="card" style="--c:#10b981;--bg:linear-gradient(135deg,#10b981,#065f46)"><div class="ribbon">MAIN!</div><div class="card-top"><div class="card-icon">🐍</div></div><div class="card-body"><div class="card-title">Snake Arena</div><div class="card-desc">Makan ular lain, pilih skin naga!</div></div></a>
+            <a href="war-race/" class="card" style="--c:#ef4444;--bg:linear-gradient(135deg,#ef4444,#7f1d1d)"><div class="ribbon">MAIN!</div><div class="card-top"><div class="card-icon">🧟</div></div><div class="card-body"><div class="card-title">Zombie Survival</div><div class="card-desc">Tembak zombie, upgrade, lawan boss!</div></div></a>
+            <a href="dino-run/" class="card" style="--c:#8b5cf6;--bg:linear-gradient(135deg,#8b5cf6,#3b0764)"><div class="ribbon">MAIN!</div><div class="card-top"><div class="card-icon">🦖</div></div><div class="card-body"><div class="card-title">Dino Run!</div><div class="card-desc">Lompat ala Mario, kumpulin koin!</div></div></a>
+            <a href="tetris/" class="card" style="--c:#06b6d4;--bg:linear-gradient(135deg,#06b6d4,#0e4d5e)"><div class="ribbon">MAIN!</div><div class="card-top"><div class="card-icon">🧱</div></div><div class="card-body"><div class="card-title">Neon Tetris</div><div class="card-desc">Susun balok, hapus baris, combo!</div></div></a>
+            <a href="suika/" class="card" style="--c:#f59e0b;--bg:linear-gradient(135deg,#f59e0b,#92400e)"><div class="ribbon">MAIN!</div><div class="card-top"><div class="card-icon">🍉</div></div><div class="card-body"><div class="card-title">Suika Fruit</div><div class="card-desc">Jatuhin buah, gabungin yang sama!</div></div></a>
+            <a href="hole-io/" class="card" style="--c:#14b8a6;--bg:linear-gradient(135deg,#14b8a6,#064e3b)"><div class="ribbon">MAIN!</div><div class="card-top"><div class="card-icon">🕳️</div></div><div class="card-body"><div class="card-title">Hole.io</div><div class="card-desc">Lobang rakus, makan seisi kota!</div></div></a>
+        </div>
+    </div>
 
-        <!-- Zombie -->
-        <a href="war-race/" class="card" style="--c: #ef4444; --bg: linear-gradient(135deg, #ef4444, #7f1d1d);">
-            <div class="play-ribbon">MAIN!</div>
-            <div class="card-top">
-                <div class="card-icon">🧟</div>
-            </div>
-            <div class="card-body">
-                <h2 class="card-title">Zombie Survival</h2>
-                <p class="card-desc">Tembak zombie, upgrade senjata, lawan BOSS!</p>
-                <div class="card-tags">
-                    <span class="tag">Shooter</span>
-                    <span class="tag">Boss Fight</span>
-                    <span class="tag">Upgrade</span>
-                </div>
-            </div>
-        </a>
-
-        <!-- Dino -->
-        <a href="dino-run/" class="card" style="--c: #8b5cf6; --bg: linear-gradient(135deg, #8b5cf6, #3b0764);">
-            <div class="play-ribbon">MAIN!</div>
-            <div class="card-top">
-                <div class="card-icon">🦖</div>
-            </div>
-            <div class="card-body">
-                <h2 class="card-title">Dino Run!</h2>
-                <p class="card-desc">Lompatin musuh ala Mario, kumpulin koin!</p>
-                <div class="card-tags">
-                    <span class="tag">Endless Run</span>
-                    <span class="tag">Mario</span>
-                </div>
-            </div>
-        </a>
-
-        <!-- Tetris -->
-        <a href="tetris/" class="card" style="--c: #00bcd4; --bg: linear-gradient(135deg, #00bcd4, #004d40);">
-            <div class="play-ribbon">MAIN!</div>
-            <div class="card-top">
-                <div class="card-icon">🧱</div>
-            </div>
-            <div class="card-body">
-                <h2 class="card-title">Neon Tetris</h2>
-                <p class="card-desc">Susun balok neon, hapus baris, combo!</p>
-                <div class="card-tags">
-                    <span class="tag">Puzzle</span>
-                    <span class="tag">Classic</span>
-                </div>
-            </div>
-        </a>
-
-        <!-- Suika -->
-        <a href="suika/" class="card" style="--c: #ff9800; --bg: linear-gradient(135deg, #ff9800, #e65100);">
-            <div class="play-ribbon">MAIN!</div>
-            <div class="card-top">
-                <div class="card-icon">🍉</div>
-            </div>
-            <div class="card-body">
-                <h2 class="card-title">Suika Fruit!</h2>
-                <p class="card-desc">Jatuhin buah, gabungin yang sama!</p>
-                <div class="card-tags">
-                    <span class="tag">Merge</span>
-                    <span class="tag">Physics</span>
-                </div>
-            </div>
-        </a>
-
-        <!-- Hole.io -->
-        <a href="hole-io/" class="card" style="--c: #00bcd4; --bg: linear-gradient(135deg, #00bcd4, #006064);">
-            <div class="play-ribbon">BARU!</div>
-            <div class="card-top">
-                <div class="card-icon">🕳️</div>
-            </div>
-            <div class="card-body">
-                <h2 class="card-title">Hole.io</h2>
-                <p class="card-desc">Lobang rakus! Makan seisi kota!</p>
-                <div class="card-tags">
-                    <span class="tag">io Game</span>
-                    <span class="tag">5 Bots</span>
-                </div>
-            </div>
-        </a>
-    </main>
+    <!-- TAB: BELAJAR TK -->
+    <div class="tab-content" id="tab-belajar">
+        <div class="grid">
+            <a href="belajar-huruf/" class="card" style="--c:#ff6d00;--bg:linear-gradient(135deg,#ff6d00,#e65100)"><div class="ribbon" style="background:#ff6d00">BELAJAR!</div><div class="card-top"><div class="card-icon">🔤</div></div><div class="card-body"><div class="card-title">Isi Huruf</div><div class="card-desc">Tebak huruf yang hilang!</div></div></a>
+            <a href="belajar-angka/" class="card" style="--c:#43a047;--bg:linear-gradient(135deg,#43a047,#1b5e20)"><div class="ribbon" style="background:#43a047">BELAJAR!</div><div class="card-top"><div class="card-icon">🔢</div></div><div class="card-body"><div class="card-title">Hitung Angka</div><div class="card-desc">Hitung emoji, pilih angka!</div></div></a>
+            <a href="belajar-warna/" class="card" style="--c:#e91e63;--bg:linear-gradient(135deg,#e91e63,#880e4f)"><div class="ribbon" style="background:#e91e63">BELAJAR!</div><div class="card-top"><div class="card-icon">🎨</div></div><div class="card-body"><div class="card-title">Tebak Warna</div><div class="card-desc">Liat warna, pilih namanya!</div></div></a>
+        </div>
+    </div>
 
     <footer class="footer">
-        <p>Dibuat sama <a href="https://github.com/igustiawan" target="_blank">igustiawan</a> buat anak-anak main seru!</p>
+        <p>Dibuat sama <a href="https://github.com/igustiawan" target="_blank">igustiawan</a></p>
     </footer>
+
+    <script>
+    function switchTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelector('.tab-' + tab).classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+    }
+    </script>
 </body>
 </html>

@@ -3,123 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Belajar Huruf!</title>
+    <title>Isi Huruf yang Hilang!</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #fff3e0; min-height: 100vh; font-family: 'Nunito', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        h1 { font-size: 2rem; color: #e65100; margin: 10px 0; }
-        .subtitle { color: #bf360c; font-size: 1rem; margin-bottom: 20px; }
-        .letter-display { font-size: clamp(8rem, 30vw, 14rem); font-weight: 900; color: #ff6d00; text-shadow: 4px 4px 0 #ffcc80; animation: pop 0.5s ease; margin: 10px 0; }
-        @keyframes pop { 0% { transform: scale(0.5); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
-        .word { font-size: 1.5rem; color: #4e342e; margin: 5px 0; }
-        .emoji-pic { font-size: 4rem; margin: 5px 0; }
-        .buttons { display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
-        .btn { padding: 14px 30px; border: none; border-radius: 50px; font-size: 1.1rem; font-weight: 700; font-family: inherit; cursor: pointer; transition: transform 0.2s; }
-        .btn:active { transform: scale(0.9); }
-        .btn-prev { background: #ffcc80; color: #e65100; }
-        .btn-next { background: #ff6d00; color: #fff; }
-        .btn-sound { background: #fff3e0; color: #ff6d00; border: 2px solid #ff6d00; font-size: 1.5rem; padding: 12px 20px; }
-        .progress { margin-top: 15px; color: #bf360c; font-size: 0.9rem; }
-        .choices { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 15px; max-width: 300px; }
-        .choice { padding: 12px; border-radius: 12px; font-size: 1.2rem; font-weight: 700; border: 3px solid #ffcc80; background: #fff; cursor: pointer; transition: all 0.2s; text-align: center; }
-        .choice:active { transform: scale(0.9); }
-        .choice.correct { background: #c8e6c9; border-color: #4caf50; }
+        h1 { font-size: 1.8rem; color: #e65100; margin: 10px 0; }
+        .subtitle { color: #bf360c; font-size: 0.95rem; margin-bottom: 20px; }
+        .emoji-pic { font-size: 4.5rem; margin: 10px 0; animation: pop 0.4s ease; }
+        @keyframes pop { 0% { transform: scale(0.7); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .word-display { font-size: 2.5rem; font-weight: 900; color: #4e342e; margin: 15px 0; letter-spacing: 4px; }
+        .word-display .blank { color: #ff6d00; border-bottom: 4px solid #ff6d00; padding: 0 4px; min-width: 30px; display: inline-block; }
+        .word-display .filled { color: #2e7d32; }
+        .hint { font-size: 0.9rem; color: #888; margin-bottom: 15px; }
+        .choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; max-width: 320px; width: 100%; }
+        .choice { padding: 14px 8px; border-radius: 14px; font-size: 1.5rem; font-weight: 900; border: 3px solid #ffcc80; background: #fff; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .choice:active { transform: scale(0.85); }
+        .choice.correct { background: #c8e6c9; border-color: #4caf50; transform: scale(1.1); }
         .choice.wrong { background: #ffcdd2; border-color: #f44336; }
-        .score { font-size: 1.1rem; color: #2e7d32; margin-top: 10px; font-weight: 700; }
+        .btn { margin-top: 20px; padding: 14px 30px; border: none; border-radius: 50px; font-size: 1.1rem; font-weight: 700; background: #ff6d00; color: #fff; font-family: inherit; cursor: pointer; }
+        .btn:active { transform: scale(0.9); }
+        .score { font-size: 1.1rem; color: #2e7d32; margin-top: 12px; font-weight: 700; }
+        .streak { font-size: 0.9rem; color: #ff6d00; margin-top: 5px; }
     </style>
 </head>
 <body>
-    <h1>Belajar Huruf ABC!</h1>
-    <p class="subtitle">Tap huruf yang benar ya!</p>
+    <h1>Isi Huruf yang Hilang!</h1>
+    <p class="subtitle">Cari huruf yang kosong ya!</p>
     <div class="emoji-pic" id="emoji"></div>
-    <div class="word" id="word"></div>
+    <div class="word-display" id="word"></div>
+    <p class="hint" id="hint"></p>
     <div class="choices" id="choices"></div>
-    <div class="score" id="score"></div>
-    <div class="buttons">
-        <button class="btn btn-next" id="nextBtn">Selanjutnya →</button>
-    </div>
-    <div class="progress" id="progress"></div>
+    <div class="score" id="score">Benar: 0</div>
+    <div class="streak" id="streak"></div>
+    <button class="btn" id="nextBtn">Soal Baru →</button>
 
     <script>
-    const DATA = [
-        { huruf: 'A', kata: 'Ayam', emoji: '🐔' },
-        { huruf: 'B', kata: 'Bola', emoji: '⚽' },
-        { huruf: 'C', kata: 'Cacing', emoji: '🪱' },
-        { huruf: 'D', kata: 'Domba', emoji: '🐑' },
-        { huruf: 'E', kata: 'Elang', emoji: '🦅' },
-        { huruf: 'F', kata: 'Film', emoji: '🎬' },
-        { huruf: 'G', kata: 'Gajah', emoji: '🐘' },
-        { huruf: 'H', kata: 'Harimau', emoji: '🐯' },
-        { huruf: 'I', kata: 'Ikan', emoji: '🐟' },
-        { huruf: 'J', kata: 'Jeruk', emoji: '🍊' },
-        { huruf: 'K', kata: 'Kucing', emoji: '🐱' },
-        { huruf: 'L', kata: 'Lebah', emoji: '🐝' },
-        { huruf: 'M', kata: 'Monyet', emoji: '🐵' },
-        { huruf: 'N', kata: 'Nanas', emoji: '🍍' },
-        { huruf: 'O', kata: 'Onta', emoji: '🐫' },
-        { huruf: 'P', kata: 'Panda', emoji: '🐼' },
-        { huruf: 'Q', kata: 'Queen', emoji: '👸' },
-        { huruf: 'R', kata: 'Rubah', emoji: '🦊' },
-        { huruf: 'S', kata: 'Singa', emoji: '🦁' },
-        { huruf: 'T', kata: 'Tikus', emoji: '🐭' },
-        { huruf: 'U', kata: 'Ular', emoji: '🐍' },
-        { huruf: 'V', kata: 'Vas', emoji: '🏺' },
-        { huruf: 'W', kata: 'Wortel', emoji: '🥕' },
-        { huruf: 'X', kata: 'Xylophone', emoji: '🎶' },
-        { huruf: 'Y', kata: 'Yoyo', emoji: '🪀' },
-        { huruf: 'Z', kata: 'Zebra', emoji: '🦓' },
+    const WORDS = [
+        { kata: 'AYAM', emoji: '🐔', hint: 'Berkokok pagi-pagi' },
+        { kata: 'BOLA', emoji: '⚽', hint: 'Bulat, buat main tendang' },
+        { kata: 'IKAN', emoji: '🐟', hint: 'Hidup di air' },
+        { kata: 'KUCING', emoji: '🐱', hint: 'Suka makan ikan' },
+        { kata: 'SAPI', emoji: '🐄', hint: 'Moo! Kasih susu' },
+        { kata: 'APEL', emoji: '🍎', hint: 'Buah merah, manis' },
+        { kata: 'GAJAH', emoji: '🐘', hint: 'Hewan besar, belalai panjang' },
+        { kata: 'BULAN', emoji: '🌙', hint: 'Di langit malam' },
+        { kata: 'KUDA', emoji: '🐴', hint: 'Bisa ditunggangi' },
+        { kata: 'RUSA', emoji: '🦌', hint: 'Punya tanduk bagus' },
+        { kata: 'PANDA', emoji: '🐼', hint: 'Hitam putih, makan bambu' },
+        { kata: 'SINGA', emoji: '🦁', hint: 'Raja hutan' },
+        { kata: 'BEBEK', emoji: '🦆', hint: 'Kwek kwek kwek' },
+        { kata: 'JERUK', emoji: '🍊', hint: 'Buah oranye, asem manis' },
+        { kata: 'TOPI', emoji: '🧢', hint: 'Dipakai di kepala' },
+        { kata: 'BUKU', emoji: '📖', hint: 'Buat baca cerita' },
+        { kata: 'HUJAN', emoji: '🌧️', hint: 'Air dari langit' },
+        { kata: 'BUNGA', emoji: '🌸', hint: 'Cantik, wangi' },
+        { kata: 'MOBIL', emoji: '🚗', hint: 'Buat jalan-jalan' },
+        { kata: 'PIZZA', emoji: '🍕', hint: 'Makanan enak dari Italia' },
     ];
 
-    let current = 0, benar = 0, total = 0;
+    let benar = 0, total = 0, streak = 0;
 
-    function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+    function genQuestion() {
+        const w = WORDS[Math.floor(Math.random() * WORDS.length)];
+        // Pick 1-2 positions to blank out
+        const blankCount = w.kata.length > 4 ? 2 : 1;
+        const positions = [];
+        while (positions.length < blankCount) {
+            const p = Math.floor(Math.random() * w.kata.length);
+            if (!positions.includes(p)) positions.push(p);
+        }
+        positions.sort((a,b) => a-b);
 
-    function show() {
-        const d = DATA[current];
-        document.getElementById('emoji').textContent = d.emoji;
-        document.getElementById('word').textContent = d.kata;
-        document.getElementById('progress').textContent = 'Huruf ' + (current+1) + ' / ' + DATA.length;
-        document.getElementById('score').textContent = 'Benar: ' + benar + ' / ' + total;
+        const correctLetters = positions.map(p => w.kata[p]);
+        
+        document.getElementById('emoji').textContent = w.emoji;
+        document.getElementById('hint').textContent = '💡 ' + w.hint;
 
-        // Generate 4 choices (1 correct + 3 random)
-        let choices = [d.huruf];
-        while (choices.length < 4) {
-            const r = DATA[Math.floor(Math.random() * DATA.length)].huruf;
+        // Show word with blanks
+        let display = '';
+        for (let i = 0; i < w.kata.length; i++) {
+            if (positions.includes(i)) {
+                display += '<span class="blank" id="blank'+i+'">_</span>';
+            } else {
+                display += w.kata[i];
+            }
+        }
+        document.getElementById('word').innerHTML = display;
+
+        // Generate choices (correct letters + random)
+        const allLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let choices = [...correctLetters];
+        while (choices.length < 6) {
+            const r = allLetters[Math.floor(Math.random() * allLetters.length)];
             if (!choices.includes(r)) choices.push(r);
         }
-        choices = shuffle(choices);
+        choices.sort(() => Math.random() - 0.5);
 
+        let answered = 0;
         const el = document.getElementById('choices');
         el.innerHTML = '';
         choices.forEach(c => {
             const btn = document.createElement('div');
             btn.className = 'choice';
             btn.textContent = c;
-            btn.onclick = () => answer(btn, c, d.huruf);
+            btn.onclick = () => {
+                if (correctLetters.includes(c)) {
+                    btn.classList.add('correct');
+                    // Fill the blank
+                    const idx = correctLetters.indexOf(c);
+                    const blankEl = document.getElementById('blank' + positions[idx]);
+                    if (blankEl && blankEl.textContent === '_') {
+                        blankEl.textContent = c;
+                        blankEl.classList.add('filled');
+                        blankEl.classList.remove('blank');
+                        answered++;
+                    }
+                    if (answered >= blankCount) {
+                        total++; benar++; streak++;
+                        document.getElementById('score').textContent = 'Benar: ' + benar + ' / ' + total;
+                        document.getElementById('streak').textContent = streak >= 3 ? '🔥 ' + streak + ' berturut-turut!' : '';
+                        document.querySelectorAll('.choice').forEach(x => x.onclick = null);
+                    }
+                } else {
+                    btn.classList.add('wrong');
+                    total++; streak = 0;
+                    document.getElementById('score').textContent = 'Benar: ' + benar + ' / ' + total;
+                    document.getElementById('streak').textContent = '';
+                    // Show correct answers
+                    positions.forEach((p, i) => {
+                        const blankEl = document.getElementById('blank' + p);
+                        if (blankEl) { blankEl.textContent = correctLetters[i]; blankEl.classList.add('filled'); }
+                    });
+                    document.querySelectorAll('.choice').forEach(x => x.onclick = null);
+                }
+            };
             el.appendChild(btn);
         });
     }
 
-    function answer(btn, picked, correct) {
-        total++;
-        document.querySelectorAll('.choice').forEach(c => c.onclick = null);
-        if (picked === correct) {
-            btn.classList.add('correct');
-            benar++;
-        } else {
-            btn.classList.add('wrong');
-            document.querySelectorAll('.choice').forEach(c => { if (c.textContent === correct) c.classList.add('correct'); });
-        }
-        document.getElementById('score').textContent = 'Benar: ' + benar + ' / ' + total;
-    }
-
-    document.getElementById('nextBtn').onclick = () => {
-        current = (current + 1) % DATA.length;
-        show();
-    };
-
-    show();
+    document.getElementById('nextBtn').onclick = genQuestion;
+    genQuestion();
     </script>
 </body>
 </html>
