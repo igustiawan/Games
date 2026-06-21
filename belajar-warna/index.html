@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Belajar Warna!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #fce4ec; min-height: 100vh; font-family: 'Nunito', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        h1 { font-size: 2rem; color: #880e4f; margin: 10px 0; }
+        .subtitle { color: #ad1457; font-size: 1rem; margin-bottom: 20px; }
+        .color-display { width: clamp(120px, 40vw, 180px); height: clamp(120px, 40vw, 180px); border-radius: 50%; margin: 15px 0; animation: pop 0.4s ease; border: 6px solid #fff; box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
+        @keyframes pop { 0% { transform: scale(0.7); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .question { font-size: 1.3rem; color: #333; margin: 10px 0; font-weight: 700; }
+        .choices { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 15px; max-width: 320px; width: 100%; }
+        .choice { padding: 14px; border-radius: 14px; font-size: 1.1rem; font-weight: 700; border: 3px solid #f8bbd0; background: #fff; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .choice:active { transform: scale(0.9); }
+        .choice.correct { background: #c8e6c9; border-color: #4caf50; }
+        .choice.wrong { background: #ffcdd2; border-color: #f44336; }
+        .btn { margin-top: 20px; padding: 14px 30px; border: none; border-radius: 50px; font-size: 1.1rem; font-weight: 700; background: #e91e63; color: #fff; font-family: inherit; cursor: pointer; }
+        .btn:active { transform: scale(0.9); }
+        .score { font-size: 1.1rem; color: #2e7d32; margin-top: 12px; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <h1>Belajar Warna!</h1>
+    <p class="subtitle">Tebak warna yang ditunjukin!</p>
+    <div class="question" id="question">Ini warna apa?</div>
+    <div class="color-display" id="colorBox"></div>
+    <div class="choices" id="choices"></div>
+    <div class="score" id="score"></div>
+    <button class="btn" id="nextBtn">Warna Baru →</button>
+
+    <script>
+    const COLORS = [
+        { nama: 'Merah', hex: '#f44336', emoji: '🔴' },
+        { nama: 'Biru', hex: '#2196f3', emoji: '🔵' },
+        { nama: 'Kuning', hex: '#ffeb3b', emoji: '🟡' },
+        { nama: 'Hijau', hex: '#4caf50', emoji: '🟢' },
+        { nama: 'Oranye', hex: '#ff9800', emoji: '🟠' },
+        { nama: 'Ungu', hex: '#9c27b0', emoji: '🟣' },
+        { nama: 'Pink', hex: '#e91e63', emoji: '💗' },
+        { nama: 'Coklat', hex: '#795548', emoji: '🟤' },
+        { nama: 'Putih', hex: '#f5f5f5', emoji: '⚪' },
+        { nama: 'Hitam', hex: '#212121', emoji: '⚫' },
+    ];
+
+    let benar = 0, total = 0;
+
+    function genQuestion() {
+        const answer = COLORS[Math.floor(Math.random() * COLORS.length)];
+        document.getElementById('colorBox').style.background = answer.hex;
+        document.getElementById('question').textContent = 'Ini warna apa? ' + answer.emoji;
+
+        let choices = [answer.nama];
+        while (choices.length < 4) {
+            const r = COLORS[Math.floor(Math.random() * COLORS.length)].nama;
+            if (!choices.includes(r)) choices.push(r);
+        }
+        choices.sort(() => Math.random() - 0.5);
+
+        const el = document.getElementById('choices');
+        el.innerHTML = '';
+        choices.forEach(c => {
+            const btn = document.createElement('div');
+            btn.className = 'choice';
+            btn.textContent = c;
+            btn.onclick = () => pick(btn, c, answer.nama);
+            el.appendChild(btn);
+        });
+    }
+
+    function pick(btn, picked, correct) {
+        total++;
+        document.querySelectorAll('.choice').forEach(c => c.onclick = null);
+        if (picked === correct) {
+            btn.classList.add('correct');
+            benar++;
+        } else {
+            btn.classList.add('wrong');
+            document.querySelectorAll('.choice').forEach(c => { if (c.textContent === correct) c.classList.add('correct'); });
+        }
+        document.getElementById('score').textContent = 'Benar: ' + benar + ' / ' + total;
+    }
+
+    document.getElementById('nextBtn').onclick = genQuestion;
+    genQuestion();
+    </script>
+</body>
+</html>

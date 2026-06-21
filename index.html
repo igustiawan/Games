@@ -67,6 +67,16 @@
             text-shadow: 1px 1px 0px rgba(0,0,0,0.3);
         }
 
+        .section-label {
+            max-width: 540px;
+            margin: 0 auto 10px;
+            padding: 10px 20px;
+            border-radius: 14px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            text-align: center;
+        }
+
         /* Games container */
         .games {
             display: grid;
@@ -236,6 +246,40 @@
         <p class="subtitle">Pilih game favoritmu, langsung main!</p>
     </header>
 
+    <!-- SECTION: BELAJAR TK -->
+    <div class="section-label" style="background: #fff3e0; color: #e65100;">📚 Belajar TK</div>
+    <main class="games">
+        <a href="belajar-huruf/" class="card" style="--c: #ff6d00; --bg: linear-gradient(135deg, #ff6d00, #e65100);">
+            <div class="play-ribbon" style="background:#ff6d00">BELAJAR!</div>
+            <div class="card-top"><div class="card-icon">🔤</div></div>
+            <div class="card-body">
+                <h2 class="card-title">Huruf ABC</h2>
+                <p class="card-desc">Kenal huruf A-Z dari gambar!</p>
+                <div class="card-tags"><span class="tag" style="background:#ff6d00">Huruf</span><span class="tag" style="background:#ff6d00">Quiz</span></div>
+            </div>
+        </a>
+        <a href="belajar-angka/" class="card" style="--c: #43a047; --bg: linear-gradient(135deg, #43a047, #1b5e20);">
+            <div class="play-ribbon" style="background:#43a047">BELAJAR!</div>
+            <div class="card-top"><div class="card-icon">🔢</div></div>
+            <div class="card-body">
+                <h2 class="card-title">Angka 123</h2>
+                <p class="card-desc">Hitung emoji, pilih angka!</p>
+                <div class="card-tags"><span class="tag" style="background:#43a047">Angka</span><span class="tag" style="background:#43a047">Hitung</span></div>
+            </div>
+        </a>
+        <a href="belajar-warna/" class="card" style="--c: #e91e63; --bg: linear-gradient(135deg, #e91e63, #880e4f);">
+            <div class="play-ribbon" style="background:#e91e63">BELAJAR!</div>
+            <div class="card-top"><div class="card-icon">🎨</div></div>
+            <div class="card-body">
+                <h2 class="card-title">Warna</h2>
+                <p class="card-desc">Tebak nama warna yang muncul!</p>
+                <div class="card-tags"><span class="tag" style="background:#e91e63">Warna</span><span class="tag" style="background:#e91e63">TK</span></div>
+            </div>
+        </a>
+    </main>
+
+    <!-- SECTION: GAME SERU -->
+    <div class="section-label" style="background: rgba(255,255,255,0.1); color: #fff;">🎮 Game Seru</div>
     <main class="games">
         <!-- Snake -->
         <a href="snake-game/" class="card" style="--c: #10b981; --bg: linear-gradient(135deg, #10b981, #065f46);">
