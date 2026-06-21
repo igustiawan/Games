@@ -6,86 +6,69 @@
     <title>Belajar Warna!</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #fce4ec; min-height: 100vh; font-family: 'Nunito', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        h1 { font-size: 2rem; color: #880e4f; margin: 10px 0; }
-        .subtitle { color: #ad1457; font-size: 1rem; margin-bottom: 20px; }
-        .color-display { width: clamp(120px, 40vw, 180px); height: clamp(120px, 40vw, 180px); border-radius: 50%; margin: 15px 0; animation: pop 0.4s ease; border: 6px solid #fff; box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
-        @keyframes pop { 0% { transform: scale(0.7); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .question { font-size: 1.3rem; color: #333; margin: 10px 0; font-weight: 700; }
-        .choices { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 15px; max-width: 320px; width: 100%; }
-        .choice { padding: 14px; border-radius: 14px; font-size: 1.1rem; font-weight: 700; border: 3px solid #f8bbd0; background: #fff; cursor: pointer; transition: all 0.2s; text-align: center; }
-        .choice:active { transform: scale(0.9); }
-        .choice.correct { background: #c8e6c9; border-color: #4caf50; }
-        .choice.wrong { background: #ffcdd2; border-color: #f44336; }
-        .btn { margin-top: 20px; padding: 14px 30px; border: none; border-radius: 50px; font-size: 1.1rem; font-weight: 700; background: #e91e63; color: #fff; font-family: inherit; cursor: pointer; }
-        .btn:active { transform: scale(0.9); }
-        .score { font-size: 1.1rem; color: #2e7d32; margin-top: 12px; font-weight: 700; }
-    </style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#fce4ec;min-height:100vh;font-family:'Nunito',sans-serif;display:flex;flex-direction:column;align-items:center;padding:20px}
+        h1{font-size:1.7rem;color:#880e4f;margin:10px 0}
+</style>
 </head>
 <body>
-    <h1>Belajar Warna!</h1>
-    <p class="subtitle">Tebak warna yang ditunjukin!</p>
-    <div class="question" id="question">Ini warna apa?</div>
-    <div class="color-display" id="colorBox"></div>
-    <div class="choices" id="choices"></div>
-    <div class="score" id="score"></div>
-    <button class="btn" id="nextBtn">Warna Baru →</button>
-
+    <h1>Tebak Warna!</h1>
+    <div class="game-area" id="gameArea">
+        <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+        <div class="progress-text" id="progText">Soal 1 / 10</div>
+        <div class="question" id="question">Ini warna apa?</div>
+        <div class="color-box" id="colorBox"></div>
+        <div class="choices" id="choices"></div>
+        <button class="next-btn" id="nextBtn" style="display:none">Lanjut →</button>
+    </div>
+    <div class="result" id="result">
+        <div class="result-emoji" id="resEmoji"></div>
+        <div class="result-title" id="resTitle"></div>
+        <div class="stars" id="resStars"></div>
+        <div class="result-score" id="resScore"></div>
+        <div class="result-msg" id="resMsg"></div>
+        <button class="play-again" onclick="startGame()">Main Lagi!</button>
+    </div>
     <script>
-    const COLORS = [
-        { nama: 'Merah', hex: '#f44336', emoji: '🔴' },
-        { nama: 'Biru', hex: '#2196f3', emoji: '🔵' },
-        { nama: 'Kuning', hex: '#ffeb3b', emoji: '🟡' },
-        { nama: 'Hijau', hex: '#4caf50', emoji: '🟢' },
-        { nama: 'Oranye', hex: '#ff9800', emoji: '🟠' },
-        { nama: 'Ungu', hex: '#9c27b0', emoji: '🟣' },
-        { nama: 'Pink', hex: '#e91e63', emoji: '💗' },
-        { nama: 'Coklat', hex: '#795548', emoji: '🟤' },
-        { nama: 'Putih', hex: '#f5f5f5', emoji: '⚪' },
-        { nama: 'Hitam', hex: '#212121', emoji: '⚫' },
-    ];
-
-    let benar = 0, total = 0;
-
-    function genQuestion() {
-        const answer = COLORS[Math.floor(Math.random() * COLORS.length)];
-        document.getElementById('colorBox').style.background = answer.hex;
-        document.getElementById('question').textContent = 'Ini warna apa? ' + answer.emoji;
-
-        let choices = [answer.nama];
-        while (choices.length < 4) {
-            const r = COLORS[Math.floor(Math.random() * COLORS.length)].nama;
-            if (!choices.includes(r)) choices.push(r);
-        }
-        choices.sort(() => Math.random() - 0.5);
-
-        const el = document.getElementById('choices');
-        el.innerHTML = '';
-        choices.forEach(c => {
-            const btn = document.createElement('div');
-            btn.className = 'choice';
-            btn.textContent = c;
-            btn.onclick = () => pick(btn, c, answer.nama);
-            el.appendChild(btn);
-        });
-    }
-
-    function pick(btn, picked, correct) {
-        total++;
-        document.querySelectorAll('.choice').forEach(c => c.onclick = null);
-        if (picked === correct) {
-            btn.classList.add('correct');
-            benar++;
-        } else {
-            btn.classList.add('wrong');
-            document.querySelectorAll('.choice').forEach(c => { if (c.textContent === correct) c.classList.add('correct'); });
-        }
-        document.getElementById('score').textContent = 'Benar: ' + benar + ' / ' + total;
-    }
-
-    document.getElementById('nextBtn').onclick = genQuestion;
-    genQuestion();
+    const COLORS=[{nama:'Merah',hex:'#f44336'},{nama:'Biru',hex:'#2196f3'},{nama:'Kuning',hex:'#ffeb3b'},{nama:'Hijau',hex:'#4caf50'},{nama:'Oranye',hex:'#ff9800'},{nama:'Ungu',hex:'#9c27b0'},{nama:'Pink',hex:'#e91e63'},{nama:'Coklat',hex:'#795548'}];
+    const TOTAL_Q=10;
+    let current,benar;
+    function startGame(){document.getElementById('result').classList.remove('show');document.getElementById('gameArea').classList.remove('hide');benar=0;current=0;showQ();}
+    function showQ(){if(current>=TOTAL_Q){showResult();return;}document.getElementById('nextBtn').style.display='none';document.getElementById('progFill').style.width=(current/TOTAL_Q*100)+'%';document.getElementById('progText').textContent='Soal '+(current+1)+' / '+TOTAL_Q;const ans=COLORS[Math.floor(Math.random()*COLORS.length)];document.getElementById('colorBox').style.background=ans.hex;let ch=[ans.nama];while(ch.length<4){const r=COLORS[Math.floor(Math.random()*COLORS.length)].nama;if(!ch.includes(r))ch.push(r);}ch.sort(()=>Math.random()-0.5);const el=document.getElementById('choices');el.innerHTML='';ch.forEach(c=>{const b=document.createElement('div');b.className='choice';b.textContent=c;b.onclick=()=>pick(b,c,ans.nama);el.appendChild(b);});}
+    function pick(btn,picked,correct){document.querySelectorAll('.choice').forEach(c=>{c.classList.add('disabled');c.onclick=null;});if(picked===correct){btn.classList.add('correct');benar++;}else{btn.classList.add('wrong');document.querySelectorAll('.choice').forEach(c=>{if(c.textContent===correct)c.classList.add('correct');});}document.getElementById('nextBtn').style.display='block';}
+    document.getElementById('nextBtn').onclick=()=>{current++;showQ();};
+    function showResult(){document.getElementById('gameArea').classList.add('hide');document.getElementById('result').classList.add('show');const pct=benar/TOTAL_Q;let e,t,m,s;if(pct>=0.9){e='🏆';t='LUAR BIASA!';m='Warna semua hafal!';s=3;}else if(pct>=0.7){e='🎉';t='HEBAT!';m='Hampir sempurna!';s=2;}else if(pct>=0.5){e='👍';t='BAGUS!';m='Terus belajar ya!';s=1;}else{e='💪';t='SEMANGAT!';m='Ayo coba lagi!';s=0;}document.getElementById('resEmoji').textContent=e;document.getElementById('resTitle').textContent=t;document.getElementById('resScore').textContent='Benar: '+benar+' / '+TOTAL_Q;document.getElementById('resMsg').textContent=m;document.getElementById('resStars').textContent='⭐'.repeat(s)+'☆'.repeat(3-s);}
+    startGame();
     </script>
 </body>
 </html>
+
+
+<!-- Additional styles injected before closing head wasn't possible, adding via style tag -->
+<style>
+        .progress-bar{width:100%;max-width:320px;height:12px;background:#f8bbd0;border-radius:10px;margin:10px 0;overflow:hidden}
+        .progress-fill{height:100%;background:#e91e63;border-radius:10px;transition:width 0.3s}
+        .progress-text{font-size:0.8rem;color:#880e4f;margin-bottom:10px}
+        .question{font-size:1.2rem;color:#333;font-weight:700;margin:8px 0}
+        .color-box{width:clamp(100px,35vw,150px);height:clamp(100px,35vw,150px);border-radius:50%;margin:12px 0;border:6px solid #fff;box-shadow:0 6px 20px rgba(0,0,0,0.12);animation:pop 0.4s}
+        @keyframes pop{0%{transform:scale(0.7)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
+        .choices{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px;max-width:300px;width:100%}
+        .choice{padding:13px;border-radius:13px;font-size:1.1rem;font-weight:700;border:3px solid #f8bbd0;background:#fff;cursor:pointer;transition:all 0.2s;text-align:center}
+        .choice:active{transform:scale(0.85)}
+        .choice.correct{background:#c8e6c9;border-color:#4caf50}
+        .choice.wrong{background:#ffcdd2;border-color:#f44336}
+        .choice.disabled{pointer-events:none;opacity:0.5}
+        .next-btn{margin-top:15px;padding:12px 28px;border:none;border-radius:50px;font-size:1rem;font-weight:700;background:#e91e63;color:#fff;font-family:inherit;cursor:pointer}
+        .next-btn:active{transform:scale(0.9)}
+        .result{display:none;flex-direction:column;align-items:center;text-align:center;padding:30px 20px}
+        .result.show{display:flex}
+        .result-emoji{font-size:5rem;animation:pop 0.5s}
+        .result-title{font-size:1.8rem;font-weight:900;margin:10px 0}
+        .result-msg{font-size:1.1rem;color:#555;margin:5px 0 20px}
+        .result-score{font-size:1.3rem;font-weight:800;color:#880e4f;margin-bottom:5px}
+        .stars{font-size:2.5rem;margin:10px 0}
+        .play-again{padding:16px 35px;border:none;border-radius:50px;font-size:1.2rem;font-weight:800;background:#e91e63;color:#fff;font-family:inherit;cursor:pointer;margin-top:15px}
+        .play-again:active{transform:scale(0.9)}
+        .game-area{display:flex;flex-direction:column;align-items:center}
+        .game-area.hide{display:none}
+</style>
