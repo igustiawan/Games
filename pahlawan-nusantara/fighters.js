@@ -34,7 +34,7 @@ F.gatotkaca = {
   tag: 'Terbang melayang, hujam dari langit',
   aura: '#5b9dff',
   cutin: 'OTOT KAWAT TULANG BESI!',
-  build: { h: 150, cw: 58, headR: 27, bodyW: 34, bodyH: 40, limb: 20, leg: 22, prop: 'wings' },
+  build: { h: 150, cw: 58, headR: 27, bodyW: 38, bodyH: 40, limb: 20, leg: 22, prop: 'wings', costume: 'armor', face: 'hero' },
   colors: { primary: '#2f6fd0', secondary: '#cfdcea', accent: '#f2c14e', skin: '#e0b183', dark: '#1a3a6d' },
   stats: { health: 1000, walk: 205, run: 325, jump: 640, airJumps: 2, weight: 1.05, hover: true },
   moves: {
@@ -69,7 +69,7 @@ F.barong = {
   tag: 'Lambat tapi tebal, bisa menangkis',
   aura: '#ff7a45',
   cutin: 'AKU PENJAGA HUTAN!',
-  build: { h: 162, cw: 76, headR: 30, bodyW: 44, bodyH: 44, limb: 22, leg: 22, prop: 'mane' },
+  build: { h: 162, cw: 76, headR: 30, bodyW: 48, bodyH: 44, limb: 22, leg: 22, prop: 'mane', costume: 'fur', face: 'fierce' },
   colors: { primary: '#e8503a', secondary: '#fff3d6', accent: '#f2c14e', skin: '#c98a5e', dark: '#7d1f14' },
   stats: { health: 1150, walk: 175, run: 270, jump: 545, airJumps: 1, weight: 1.32 },
   moves: {
@@ -104,7 +104,7 @@ F.srikandi = {
   tag: 'Paling cepat, keris bertubi-tubi',
   aura: '#c77dff',
   cutin: 'TARIAN PEDANGKU TAK TERBENDUNG!',
-  build: { h: 142, cw: 52, headR: 26, bodyW: 30, bodyH: 38, limb: 19, leg: 21, prop: 'keris' },
+  build: { h: 142, cw: 52, headR: 26, bodyW: 34, bodyH: 38, limb: 19, leg: 21, prop: 'keris', costume: 'kebaya', face: 'elegant' },
   colors: { primary: '#7c4dff', secondary: '#f7d9ff', accent: '#f2c14e', skin: '#e8bf95', dark: '#3b1e8f' },
   stats: { health: 880, walk: 245, run: 385, jump: 605, airJumps: 1, weight: .88 },
   moves: {
@@ -140,7 +140,7 @@ F.hanuman = {
   tag: 'Ekor panjang & bola api',
   aura: '#ffb703',
   cutin: 'GADA SAKTI, HANCURKAN!',
-  build: { h: 146, cw: 58, headR: 27, bodyW: 34, bodyH: 40, limb: 20, leg: 22, prop: 'tail' },
+  build: { h: 146, cw: 58, headR: 27, bodyW: 38, bodyH: 40, limb: 20, leg: 22, prop: 'tail', costume: 'monkey', face: 'cheerful' },
   colors: { primary: '#f4a261', secondary: '#fff8e7', accent: '#e8503a', skin: '#f0d3b0', dark: '#a35a20' },
   stats: { health: 950, walk: 218, run: 345, jump: 665, airJumps: 2, weight: .95 },
   moves: {

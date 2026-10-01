@@ -82,9 +82,11 @@ function initTitle() {
 /* ------------------------------------------------------------
    Layar pilih pahlawan
    ------------------------------------------------------------ */
-function cardCanvas(def) {
+function cardCanvas() {
   const cv = document.createElement('canvas');
-  cv.width = 150; cv.height = 158;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(150 * dpr);
+  cv.height = Math.round(158 * dpr);
   return cv;
 }
 
@@ -122,9 +124,11 @@ function buildArenas() {
     const card = document.createElement('div');
     card.className = 'acard';
     const cv = document.createElement('canvas');
-    cv.width = 200; cv.height = 112;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(200 * dpr);
+    cv.height = Math.round(112 * dpr);
     const c = cv.getContext('2d');
-    c.save(); c.scale(200 / 420, 112 / 240);
+    c.save(); c.scale(cv.width / 420, cv.height / 240);
     ar.bg(c, 420, 240); ar.fg(c, 420, 240);
     c.restore();
     card.appendChild(cv);
@@ -250,6 +254,7 @@ function startFight() {
   el('ov-pause').hidden = true;
   el('ov-result').hidden = true;
   showScreen('fight');
+  fitCanvas();
   A.startMusic();
 }
 
@@ -304,7 +309,21 @@ function initFightUI() {
    ------------------------------------------------------------ */
 const canvas = el('game');
 const ctx = canvas.getContext('2d');
-const W = canvas.width, H = canvas.height;
+const W = 960, H = 540;              // ukuran logika permainan
+let pixelScale = 1;
+
+/* Sesuaikan kanvas dengan kerapatan piksel layar supaya garis tidak kabur. */
+function fitCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const box = canvas.getBoundingClientRect();
+  const shown = box.width > 10 ? box.width : Math.min(1120, window.innerWidth || W);
+  const s = Math.min(2.6, Math.max(1, (shown / W) * dpr));
+  pixelScale = s;
+  canvas.width = Math.round(W * s);
+  canvas.height = Math.round(H * s);
+  R.setScale(s);
+}
+window.addEventListener('resize', () => { if (App.screen === 'fight') fitCanvas(); });
 
 function drawSelectPortraits(dt) {
   if (App.screen !== 'select' || !App.cards) return;
@@ -313,7 +332,7 @@ function drawSelectPortraits(dt) {
     R.drawPortrait(c.cv, c.def, App.t + c.phase, {
       facing: 1,
       state: hero ? 'win' : 'idle',
-      scale: hero ? 0.86 : 0.78,
+      zoom: hero ? 1.10 : 1.0,
     });
   });
 }
@@ -347,7 +366,7 @@ function frame(now) {
       }
     }
 
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     ctx.clearRect(0, 0, W, H);
     E.render(s, ctx, W, H, App.t);
 

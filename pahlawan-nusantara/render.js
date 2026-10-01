@@ -210,6 +210,403 @@ function ball(ctx, x, y, r, col, outline) {
   ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
 }
 
+/* tulang bervolume: garis luar, warna dasar, sisi gelap, dan kilau */
+function limb(ctx, x0, y0, x1, y1, w, col, outline, opts) {
+  const o = opts || {};
+  ctx.lineCap = 'round';
+  const dx = x1 - x0, dy = y1 - y0;
+  const L = Math.hypot(dx, dy) || 1;
+  let nx = -dy / L, ny = dx / L;
+  if (ny < 0) { nx = -nx; ny = -ny; }        // kilau selalu di sisi atas
+  if (outline) {
+    ctx.strokeStyle = outline; ctx.lineWidth = w + 3.6;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+  ctx.strokeStyle = col; ctx.lineWidth = w;
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  if (o.dark) {
+    ctx.strokeStyle = o.dark; ctx.lineWidth = w * 0.36;
+    ctx.beginPath();
+    ctx.moveTo(x0 - nx * w * 0.30, y0 - ny * w * 0.30);
+    ctx.lineTo(x1 - nx * w * 0.30, y1 - ny * w * 0.30);
+    ctx.stroke();
+  }
+  if (o.hi !== false) {
+    ctx.strokeStyle = o.hi || 'rgba(255,255,255,.20)';
+    ctx.lineWidth = w * 0.30;
+    ctx.beginPath();
+    ctx.moveTo(x0 + nx * w * 0.26, y0 + ny * w * 0.26);
+    ctx.lineTo(x1 + nx * w * 0.26, y1 + ny * w * 0.26);
+    ctx.stroke();
+  }
+}
+
+/* bola bervolume (tangan, sendi) */
+function orb(ctx, x, y, r, col, outline, light) {
+  ball(ctx, x, y, r, col, outline);
+  if (light !== false) {
+    ctx.fillStyle = 'rgba(255,255,255,.22)';
+    ctx.beginPath(); ctx.arc(x + r * 0.24, y + r * 0.30, r * 0.50, 0, TAU); ctx.fill();
+  }
+}
+
+/* kubah kecil untuk bantalan bahu / pelat */
+function dome(ctx, x, y, rx, ry, rot, fill, outline, accent) {
+  ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, TAU);
+  if (outline) { ctx.strokeStyle = outline; ctx.lineWidth = 3; ctx.stroke(); }
+  ctx.fillStyle = fill; ctx.fill();
+  if (accent) {
+    ctx.beginPath(); ctx.ellipse(x, y + ry * 0.18, rx * 0.58, ry * 0.46, rot, 0, TAU);
+    ctx.strokeStyle = accent; ctx.lineWidth = 1.8; ctx.stroke();
+  }
+}
+
+/* sabuk melengkung dari satu sisi ke sisi lain */
+function band(ctx, x0, y0, x1, y1, bow, fill, outline, edge) {
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + bow, x1, y1);
+  ctx.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + bow - 9, x0, y0);
+  ctx.closePath();
+  if (outline) { ctx.strokeStyle = outline; ctx.lineWidth = 2.6; ctx.stroke(); }
+  ctx.fillStyle = fill; ctx.fill();
+  if (edge) {
+    ctx.strokeStyle = edge; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0 + 1.5);
+    ctx.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + bow + 1.5, x1, y1 + 1.5);
+    ctx.stroke();
+  }
+}
+
+/* ------------------------------------------------------------
+   Siluet badan: bahu lebar, pinggang mengecil, pinggul penuh
+   ------------------------------------------------------------ */
+function torsoPath(ctx, P, b) {
+  const bw = b.bodyW;
+  const shY = P.shoulderY, hpY = P.hipY, H = shY - hpY;
+  const nw = bw * 0.30, shw = bw * 0.58, chw = bw * 0.50, ww = bw * 0.40, hw = bw * 0.52;
+  ctx.beginPath();
+  ctx.moveTo(-hw, hpY - 2);
+  ctx.quadraticCurveTo(-ww - 1, hpY + H * 0.26, -chw, hpY + H * 0.50);
+  ctx.quadraticCurveTo(-shw - 2, hpY + H * 0.88, -nw, shY + 2);
+  ctx.quadraticCurveTo(0, shY + 6, nw, shY + 2);
+  ctx.quadraticCurveTo(shw + 2, hpY + H * 0.88, chw, hpY + H * 0.50);
+  ctx.quadraticCurveTo(ww + 1, hpY + H * 0.26, hw, hpY - 2);
+  ctx.quadraticCurveTo(0, hpY - 10, -hw, hpY - 2);
+  ctx.closePath();
+}
+
+/* sepatu: sol + punggung kaki */
+function drawFoot(ctx, p, w, fill, outline, sole) {
+  ctx.beginPath(); ctx.ellipse(2, 0, w * 0.95, w * 0.52, 0, 0, TAU);
+  ctx.fillStyle = sole; ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 2.8; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(-w * 0.10, 1.5, w * 0.50, w * 0.30, 0, 0, TAU);
+  ctx.fillStyle = fill; ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.22)'; ctx.lineWidth = 1.3; ctx.stroke();
+}
+
+/* tepi bawah bergerigi (bulu / kain) */
+function zigzag(ctx, x0, x1, y, n, depth) {
+  const w = (x1 - x0) / n, dir = x1 > x0 ? 1 : -1;
+  for (let i = 1; i <= n; i++) ctx.lineTo(x0 + dir * i * w, y + (i % 2 ? depth : 0));
+}
+
+/* ------------------------------------------------------------
+   Kostum khas tiap pahlawan
+   ------------------------------------------------------------ */
+function drawCostume(ctx, f, P, time, flash, M) {
+  const c = f.def.colors, outline = c.dark;
+  const kind = f.def.build.costume || 'armor';
+  const acc = flash ? '#fff' : c.accent;
+  const shY = P.shoulderY, hpY = P.hipY, H = M.H;
+  const stroke = (w2) => { ctx.strokeStyle = outline; ctx.lineWidth = w2 || 2.8; ctx.stroke(); };
+
+  /* ---- gelang lengan (semua pahlawan pakai) ---- */
+  const vambrace = (a, colr) => {
+    const t = 0.60, bx = lerp(a.ex, a.hx, t), by = lerp(a.ey, a.hy, t);
+    ctx.save(); ctx.translate(bx, by);
+    ctx.rotate(Math.atan2(a.hy - a.ey, a.hx - a.ex));
+    ctx.beginPath(); ctx.ellipse(0, 0, 3.6, M.armW * 0.62, 0, 0, TAU);
+    stroke(2.2); ctx.fillStyle = flash ? '#fff' : colr; ctx.fill();
+    ctx.restore();
+  };
+
+  if (kind === 'armor') {
+    /* ---------- GATOTKACA: zirah ksatria ---------- */
+    ctx.strokeStyle = acc; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, shY + 1, M.nw + 3.5, 0.22, Math.PI - 0.22); ctx.stroke();
+    // pelat dada
+    ctx.beginPath();
+    ctx.moveTo(-M.chw + 1, shY - 7);
+    ctx.quadraticCurveTo(0, shY + 3, M.chw - 1, shY - 7);
+    ctx.quadraticCurveTo(M.chw - 5, hpY + H * 0.56, 0, hpY + H * 0.46);
+    ctx.quadraticCurveTo(-M.chw + 5, hpY + H * 0.56, -M.chw + 1, shY - 7);
+    ctx.closePath();
+    stroke(); ctx.fillStyle = flash ? '#fff' : shade(c.primary, .15); ctx.fill();
+    // garis tengah
+    if (!flash) {
+      ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-M.chw * .5, shY - 12); ctx.lineTo(-M.chw * .42, hpY + H * .5); ctx.stroke();
+    }
+    // emblem V
+    ctx.fillStyle = acc;
+    ctx.beginPath();
+    ctx.moveTo(-8.5, shY - 13); ctx.lineTo(0, shY - 27); ctx.lineTo(8.5, shY - 13);
+    ctx.lineTo(0, shY - 19.5); ctx.closePath(); ctx.fill();
+    stroke(1.8);
+    // bantalan bahu
+    for (const s of [-1, 1]) {
+      dome(ctx, s * (M.shw - 1), shY - 5, 13.5, 10, s * 0.22,
+        flash ? '#fff' : (s < 0 ? shade(c.primary, -.22) : shade(c.primary, .06)), outline, acc);
+    }
+    vambrace(P.armF, acc);
+    vambrace(P.armB, shade(c.accent, -.25));
+    // sabuk + gesper
+    band(ctx, -M.hw - 2, hpY + 1, M.hw + 2, hpY + 1, 6, acc, outline, shade(c.accent, -.3));
+    ctx.beginPath(); ctx.arc(0, hpY + 4, 5.5, 0, TAU);
+    stroke(2); ctx.fillStyle = flash ? '#fff' : shade(c.accent, .25); ctx.fill();
+    // kain dengan lipatan
+    ctx.beginPath();
+    ctx.moveTo(-M.hw - 4, hpY + 3); ctx.lineTo(M.hw + 4, hpY + 3);
+    ctx.lineTo(M.hw + 8, hpY - 24);
+    ctx.quadraticCurveTo(0, hpY - 33, -M.hw - 8, hpY - 24);
+    ctx.closePath();
+    stroke(3); ctx.fillStyle = flash ? '#fff' : shade(c.primary, -.10); ctx.fill();
+    if (!flash) {
+      ctx.strokeStyle = shade(c.primary, -.34); ctx.lineWidth = 1.6;
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * M.hw * 0.45, hpY - 3);
+        ctx.lineTo(i * (M.hw + 5) * 0.62, hpY - 21);
+        ctx.stroke();
+      }
+    }
+  } else if (kind === 'fur') {
+    /* ---------- BARONG: jubah bulu penjaga ---------- */
+    const hem = hpY + H * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(-M.shw - 3, shY + 3);
+    ctx.quadraticCurveTo(-M.shw - 8, shY - 13, 0, shY - 17);
+    ctx.quadraticCurveTo(M.shw + 8, shY - 13, M.shw + 3, shY + 3);
+    ctx.lineTo(M.shw + 1, hem);
+    zigzag(ctx, M.shw + 1, -M.shw - 1, hem, 8, 8);
+    ctx.closePath();
+    stroke(3); ctx.fillStyle = flash ? '#fff' : shade(c.primary, .06); ctx.fill();
+    // lapisan dalam lebih terang
+    ctx.beginPath();
+    ctx.moveTo(-M.chw * .8, shY - 8);
+    ctx.quadraticCurveTo(0, shY + 1, M.chw * .8, shY - 8);
+    ctx.quadraticCurveTo(M.chw * .7, hpY + H * .58, 0, hpY + H * .50);
+    ctx.quadraticCurveTo(-M.chw * .7, hpY + H * .58, -M.chw * .8, shY - 8);
+    ctx.closePath();
+    stroke(2.4); ctx.fillStyle = flash ? '#fff' : c.secondary; ctx.fill();
+    // kalung lebar
+    ctx.strokeStyle = acc; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, shY + 2, M.nw + 5, 0.18, Math.PI - 0.18); ctx.stroke();
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath(); ctx.arc(i * 8, shY - 1, 2.4, 0, TAU); ctx.fillStyle = acc; ctx.fill();
+    }
+    vambrace(P.armF, acc);
+    // selempang + simpul
+    band(ctx, -M.hw - 2, hpY + 2, M.hw + 2, hpY + 2, 6, shade(c.accent, -.1), outline, acc);
+    ctx.beginPath();
+    ctx.moveTo(M.hw - 2, hpY + 4); ctx.lineTo(M.hw + 10, hpY - 14);
+    ctx.lineTo(M.hw + 17, hpY - 11); ctx.lineTo(M.hw + 5, hpY + 6);
+    ctx.closePath();
+    stroke(2.2); ctx.fillStyle = flash ? '#fff' : acc; ctx.fill();
+  } else if (kind === 'kebaya') {
+    /* ---------- SRIKANDI: kebaya + kain ---------- */
+    ctx.beginPath();
+    ctx.moveTo(-M.shw - 1, shY + 4);
+    ctx.quadraticCurveTo(-M.shw - 5, shY - 11, 0, shY - 15);
+    ctx.quadraticCurveTo(M.shw + 5, shY - 11, M.shw + 1, shY + 4);
+    ctx.quadraticCurveTo(M.chw * .9, hpY + H * .62, M.chw * .62, hpY + H * .30);
+    ctx.lineTo(-M.chw * .62, hpY + H * .30);
+    ctx.quadraticCurveTo(-M.chw * .9, hpY + H * .62, -M.shw - 1, shY + 4);
+    ctx.closePath();
+    stroke(3); ctx.fillStyle = flash ? '#fff' : shade(c.primary, .04); ctx.fill();
+    // leher V dengan tepi emas
+    ctx.beginPath();
+    ctx.moveTo(-M.nw - 2, shY + 2);
+    ctx.lineTo(0, shY - 22);
+    ctx.lineTo(M.nw + 2, shY + 2);
+    ctx.quadraticCurveTo(0, shY + 9, -M.nw - 2, shY + 2);
+    ctx.closePath();
+    ctx.fillStyle = outline; ctx.fill();
+    if (!flash) {
+      ctx.strokeStyle = acc; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-M.nw - 2, shY + 1); ctx.lineTo(0, shY - 22); ctx.lineTo(M.nw + 2, shY + 1); ctx.stroke();
+    }
+    vambrace(P.armF, acc);
+    vambrace(P.armB, shade(c.accent, -.2));
+    // sabuk emas + ujung menjuntai
+    band(ctx, -M.hw - 1, hpY + 3, M.hw + 1, hpY + 3, 5, acc, outline, shade(c.accent, -.3));
+    ctx.beginPath();
+    ctx.moveTo(M.hw - 4, hpY + 3);
+    ctx.quadraticCurveTo(M.hw + 6, hpY - 12, M.hw + 1, hpY - 26);
+    ctx.lineTo(M.hw - 7, hpY - 23);
+    ctx.quadraticCurveTo(M.hw - 2, hpY - 12, M.hw - 11, hpY + 1);
+    ctx.closePath();
+    stroke(2); ctx.fillStyle = flash ? '#fff' : acc; ctx.fill();
+    // kain panjang dengan titik batik
+    ctx.beginPath();
+    ctx.moveTo(-M.hw - 3, hpY + 3); ctx.lineTo(M.hw + 3, hpY + 3);
+    ctx.lineTo(M.hw + 11, hpY - 34);
+    ctx.quadraticCurveTo(0, hpY - 45, -M.hw - 11, hpY - 34);
+    ctx.closePath();
+    stroke(3); ctx.fillStyle = flash ? '#fff' : shade(c.primary, -.12); ctx.fill();
+    if (!flash) {
+      ctx.fillStyle = 'rgba(242,193,78,.55)';
+      for (let i = -2; i <= 2; i++) {
+        for (let j = 0; j < 2; j++) {
+          ctx.beginPath();
+          ctx.arc(i * M.hw * 0.42, hpY - 6 - j * 13, 1.7, 0, TAU); ctx.fill();
+        }
+      }
+      ctx.strokeStyle = shade(c.primary, -.34); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(M.hw * .5, hpY - 2); ctx.lineTo(M.hw * .75, hpY - 32); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-M.hw * .5, hpY - 2); ctx.lineTo(-M.hw * .75, hpY - 32); ctx.stroke();
+    }
+  } else {
+    /* ---------- HANUMAN: dada terbuka + selempang ---------- */
+    ctx.beginPath();
+    ctx.moveTo(-M.chw * .72, shY - 6);
+    ctx.quadraticCurveTo(0, shY + 2, M.chw * .72, shY - 6);
+    ctx.quadraticCurveTo(M.chw * .68, hpY + H * .52, 0, hpY + H * .44);
+    ctx.quadraticCurveTo(-M.chw * .68, hpY + H * .52, -M.chw * .72, shY - 6);
+    ctx.closePath();
+    ctx.fillStyle = flash ? '#fff' : shade(c.skin, .10); ctx.fill();
+    if (!flash) { ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 1.6; ctx.stroke(); }
+    // kalung dengan liontin
+    ctx.strokeStyle = acc; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, shY + 2, M.nw + 4, 0.20, Math.PI - 0.20); ctx.stroke();
+    ctx.fillStyle = flash ? '#fff' : c.accent;
+    ctx.beginPath(); ctx.arc(0, shY - M.nw - 6, 4.6, 0, TAU); ctx.fill();
+    stroke(1.8);
+    // gelang lengan atas
+    ctx.beginPath(); ctx.ellipse(M.shw - 1, shY - 8, 3.4, M.armW * 0.60, -0.3, 0, TAU);
+    stroke(2.2); ctx.fillStyle = flash ? '#fff' : acc; ctx.fill();
+    vambrace(P.armF, acc);
+    // kain pinggang + simpul
+    band(ctx, -M.hw - 2, hpY + 1, M.hw + 2, hpY + 1, 6, shade(c.accent, -.05), outline, acc);
+    ctx.beginPath();
+    ctx.moveTo(-M.hw - 1, hpY + 3); ctx.lineTo(M.hw + 1, hpY + 3);
+    ctx.lineTo(M.hw + 6, hpY - 26);
+    ctx.quadraticCurveTo(0, hpY - 35, -M.hw - 6, hpY - 26);
+    ctx.closePath();
+    stroke(3); ctx.fillStyle = flash ? '#fff' : shade(c.primary, -.14); ctx.fill();
+    if (!flash) {
+      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(0, hpY - 1); ctx.lineTo(0, hpY - 30); ctx.stroke();
+    }
+    // bulu kaki
+    for (const leg of [P.kneeF, P.kneeB]) {
+      dome(ctx, leg.kx, leg.ky, 7.5, 6, 0, flash ? '#fff' : c.secondary, outline, null);
+    }
+  }
+}
+
+/* ------------------------------------------------------------
+   Wajah: bentuk mata & mulut berbeda tiap pahlawan
+   ------------------------------------------------------------ */
+function eye(ctx, x, y, rx, ry, ink, kind, wide) {
+  if (wide) {                                   // kaget / tumbang
+    ctx.fillStyle = ink;
+    ctx.beginPath(); ctx.ellipse(x, y, rx * 0.86, ry * 1.20, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.beginPath(); ctx.arc(x + rx * 0.3, y + ry * 0.4, rx * 0.24, 0, TAU); ctx.fill();
+    return;
+  }
+  ctx.fillStyle = '#fffaf3';
+  ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = ink; ctx.lineWidth = Math.max(1.0, rx * 0.17); ctx.stroke();
+  ctx.fillStyle = ink;
+  const pr = kind === 'elegant' ? 0.78 : 0.86;
+  ctx.beginPath(); ctx.ellipse(x + rx * 0.12, y + ry * 0.06, rx * 0.48, ry * pr, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.95)';
+  ctx.beginPath(); ctx.arc(x + rx * 0.40, y + ry * 0.40, Math.max(0.9, rx * 0.24), 0, TAU); ctx.fill();
+  // bulu mata untuk Srikandi
+  if (kind === 'elegant') {
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x - rx * 1.02, y + ry * 0.72);
+    ctx.lineTo(x - rx * 1.55, y + ry * 1.25);
+    ctx.stroke();
+  }
+}
+
+function drawFace(ctx, f, P, flash) {
+  if (flash) return;
+  const R = P.headR, st = f.state;
+  const kind = f.def.build.face || 'hero';
+  const ink = '#2b1a3e';
+  const busy = (st === 'attack' || st === 'hurt' || st === 'win');
+  const down = (st === 'ko' || st === 'down');
+  const ex = R * 0.34, ey = R * 0.02;
+  const rx = R * 0.21, ry = R * (down ? 0.30 : busy ? 0.25 : 0.22);
+
+  // alis
+  if (!down) {
+    ctx.strokeStyle = ink; ctx.lineCap = 'round'; ctx.lineWidth = R * 0.075;
+    const by = R * 0.46, t = busy ? R * 0.10 : 0;
+    ctx.beginPath();
+    ctx.moveTo(ex + R * 0.04, by - t);
+    ctx.lineTo(ex + R * 0.30, by + t * 0.55);
+    ctx.moveTo(ex - R * 0.30, by + t * 0.45);
+    ctx.lineTo(ex - R * 0.05, by - t);
+    ctx.stroke();
+  }
+
+  eye(ctx, ex + R * 0.10, ey, rx, ry, ink, kind, down);
+  eye(ctx, ex - R * 0.22, ey, rx * 0.86, ry * 0.94, ink, kind, down);
+
+  // pipi merona
+  ctx.fillStyle = 'rgba(230,110,110,.40)';
+  ctx.beginPath(); ctx.ellipse(ex - R * 0.10, -R * 0.20, R * 0.20, R * 0.12, 0, 0, TAU); ctx.fill();
+
+  // mulut (lengkung ke bawah = senyum, karena sumbu-y ke atas)
+  const mx = ex - R * 0.04, my = -R * 0.40;
+  ctx.strokeStyle = ink; ctx.fillStyle = ink;
+  ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.6, R * 0.085);
+  if (down) {
+    ctx.beginPath(); ctx.ellipse(mx, my, R * 0.18, R * 0.13, 0, 0, TAU); ctx.fill();
+  } else if (kind === 'fierce') {
+    // mulut terbuka menyeringai
+    ctx.beginPath();
+    ctx.moveTo(mx - R * 0.26, my + R * 0.12);
+    ctx.quadraticCurveTo(mx, my + R * 0.17, mx + R * 0.26, my + R * 0.12);
+    ctx.quadraticCurveTo(mx, my - R * 0.28, mx - R * 0.26, my + R * 0.12);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff8e6';
+    ctx.beginPath();
+    ctx.moveTo(mx - R * 0.16, my - R * 0.02); ctx.lineTo(mx - R * 0.09, my - R * 0.19);
+    ctx.lineTo(mx - R * 0.02, my - R * 0.02); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(mx + R * 0.08, my - R * 0.02); ctx.lineTo(mx + R * 0.15, my - R * 0.18);
+    ctx.lineTo(mx + R * 0.21, my - R * 0.01); ctx.closePath(); ctx.fill();
+  } else if (kind === 'cheerful') {
+    ctx.beginPath();
+    ctx.moveTo(mx - R * 0.26, my + R * 0.10);
+    ctx.quadraticCurveTo(mx, my + R * 0.15, mx + R * 0.26, my + R * 0.10);
+    ctx.quadraticCurveTo(mx, my - R * 0.24, mx - R * 0.26, my + R * 0.10);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e8748c';
+    ctx.beginPath(); ctx.ellipse(mx, my - R * 0.12, R * 0.10, R * 0.06, 0, 0, TAU); ctx.fill();
+  } else if (kind === 'elegant') {
+    ctx.beginPath();
+    ctx.moveTo(mx - R * 0.18, my + R * 0.10);
+    ctx.quadraticCurveTo(mx, my - R * 0.06, mx + R * 0.18, my + R * 0.10);
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(mx - R * 0.21, my + R * 0.09);
+    ctx.quadraticCurveTo(mx, my - R * 0.08, mx + R * 0.21, my + R * 0.09);
+    ctx.stroke();
+  }
+}
+
 /* ------------------------------------------------------------
    Karakter lengkap
    ------------------------------------------------------------ */
@@ -219,8 +616,16 @@ function drawCharacter(ctx, f, time) {
   const outline = c.dark;
   const flash = f.hitFlash > 0;
 
-  const legW = Math.max(8, b.limb * 0.52);
-  const armW = Math.max(8, b.limb * 0.55);
+  const legW = Math.max(9, b.limb * 0.66);
+  const armW = Math.max(9, b.limb * 0.62);
+  const bw = b.bodyW;
+  const H = P.shoulderY - P.hipY;
+  const M = {
+    bw, H, armW, legW,
+    nw: bw * 0.30, shw: bw * 0.58, chw: bw * 0.50, ww: bw * 0.40, hw: bw * 0.52,
+  };
+  const backC = flash ? '#fff' : shade(c.primary, -.26);
+  const mainC = flash ? '#fff' : c.primary;
 
   ctx.save();
   ctx.translate(f.x, f.y);
@@ -239,65 +644,48 @@ function drawCharacter(ctx, f, time) {
 
   const ab = P.armB, af = P.armF;
 
-  // ---- PROP BELAKANG ----
+  // ---- PROP BELAKANG (sayap / ekor / selendang) ----
   drawPropBack(ctx, f, P, time);
 
   // ---- kaki belakang ----
-  bone(ctx, P.hipBx, P.hipY, P.kneeB.kx, P.kneeB.ky, legW,
-    flash ? '#fff' : shade(c.primary, -.22), outline);
-  bone(ctx, P.kneeB.kx, P.kneeB.ky, P.footB.x, P.footB.y, legW - 1,
-    flash ? '#fff' : shade(c.primary, -.22), outline);
-  ctx.fillStyle = outline;
-  ctx.beginPath(); ctx.ellipse(P.footB.x + 3, P.footB.y, 12, 7, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = flash ? '#fff' : c.accent;
-  ctx.beginPath(); ctx.ellipse(P.footB.x + 3, P.footB.y, 9, 5, 0, 0, TAU); ctx.fill();
+  limb(ctx, P.hipBx, P.hipY, P.kneeB.kx, P.kneeB.ky, legW, backC, outline, { hi: false });
+  limb(ctx, P.kneeB.kx, P.kneeB.ky, P.footB.x, P.footB.y, legW - 1.5, backC, outline, { hi: false });
+  drawFoot(ctx, P.footB, legW, backC, outline, flash ? '#fff' : shade(c.accent, -.22));
 
   // ---- lengan belakang ----
-  bone(ctx, ab.shx, ab.shy, ab.ex, ab.ey, armW, flash ? '#fff' : shade(c.primary, -.22), outline);
-  bone(ctx, ab.ex, ab.ey, ab.hx, ab.hy, armW - 1, flash ? '#fff' : shade(c.primary, -.22), outline);
-  ball(ctx, ab.hx, ab.hy, armW * .62, flash ? '#fff' : c.skin, outline);
+  limb(ctx, ab.shx, ab.shy, ab.ex, ab.ey, armW, backC, outline, { hi: false });
+  limb(ctx, ab.ex, ab.ey, ab.hx, ab.hy, armW - 1.5, backC, outline, { hi: false });
+  orb(ctx, ab.hx, ab.hy, armW * .58, flash ? '#fff' : shade(c.skin, -.18), outline, false);
 
   // ---- badan ----
-  const bodyGrad = ctx.createLinearGradient(0, P.hipY, 0, P.shoulderY);
-  bodyGrad.addColorStop(0, shade(c.primary, -.1));
-  bodyGrad.addColorStop(.55, c.primary);
-  bodyGrad.addColorStop(1, shade(c.primary, .12));
-  const bw = b.bodyW * (1 - 0.06), tw = b.bodyW * (1 + 0.16);
-  ctx.beginPath();
-  ctx.moveTo(-bw / 2 - 3, P.hipY - 4);
-  ctx.quadraticCurveTo(-tw / 2 - 2, (P.hipY + P.shoulderY) / 2, -tw / 2, P.shoulderY + 2);
-  ctx.lineTo(tw / 2, P.shoulderY + 2);
-  ctx.quadraticCurveTo(tw / 2 + 2, (P.hipY + P.shoulderY) / 2, bw / 2 + 3, P.hipY - 4);
-  ctx.quadraticCurveTo(0, P.hipY - 12, -bw / 2 - 3, P.hipY - 4);
-  ctx.closePath();
-  ctx.strokeStyle = outline; ctx.lineWidth = 3.4; ctx.stroke();
-  ctx.fillStyle = flash ? '#fff' : bodyGrad; ctx.fill();
+  torsoPath(ctx, P, b);
+  ctx.strokeStyle = outline; ctx.lineWidth = 3.6; ctx.stroke();
+  const bodyGrad = ctx.createLinearGradient(-M.chw, 0, M.chw, 0);
+  bodyGrad.addColorStop(0, flash ? '#fff' : shade(c.primary, -.26));
+  bodyGrad.addColorStop(.42, mainC);
+  bodyGrad.addColorStop(1, flash ? '#fff' : shade(c.primary, .16));
+  ctx.fillStyle = bodyGrad; ctx.fill();
+  if (!flash) {                       // bayangan di bawah dagu
+    ctx.fillStyle = 'rgba(0,0,0,.13)';
+    ctx.beginPath(); ctx.ellipse(0, P.shoulderY - 5, M.nw * 1.55, 7, 0, 0, TAU); ctx.fill();
+  }
 
-  // sabuk / kain
-  ctx.fillStyle = flash ? '#fff' : c.accent;
-  ctx.beginPath();
-  ctx.moveTo(-bw / 2 - 4, P.hipY - 5);
-  ctx.quadraticCurveTo(0, P.hipY - 14, bw / 2 + 4, P.hipY - 5);
-  ctx.lineTo(bw / 2 + 2, P.hipY + 5);
-  ctx.quadraticCurveTo(0, P.hipY - 3, -bw / 2 - 2, P.hipY + 5);
-  ctx.closePath(); ctx.fill();
+  // ---- kostum khas pahlawan ----
+  drawCostume(ctx, f, P, time, flash, M);
 
   // ---- kaki depan ----
-  bone(ctx, P.hipFx, P.hipY, P.kneeF.kx, P.kneeF.ky, legW, flash ? '#fff' : c.primary, outline);
-  bone(ctx, P.kneeF.kx, P.kneeF.ky, P.footF.x, P.footF.y, legW - 1, flash ? '#fff' : c.primary, outline);
-  ctx.fillStyle = outline;
-  ctx.beginPath(); ctx.ellipse(P.footF.x + 3, P.footF.y, 12, 7, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = flash ? '#fff' : c.accent;
-  ctx.beginPath(); ctx.ellipse(P.footF.x + 3, P.footF.y, 9, 5, 0, 0, TAU); ctx.fill();
+  limb(ctx, P.hipFx, P.hipY, P.kneeF.kx, P.kneeF.ky, legW, mainC, outline, {});
+  limb(ctx, P.kneeF.kx, P.kneeF.ky, P.footF.x, P.footF.y, legW - 1.5, mainC, outline, {});
+  drawFoot(ctx, P.footF, legW, mainC, outline, flash ? '#fff' : c.accent);
 
   // ---- lengan depan ----
-  bone(ctx, af.shx, af.shy, af.ex, af.ey, armW, flash ? '#fff' : c.primary, outline);
-  bone(ctx, af.ex, af.ey, af.hx, af.hy, armW - 1, flash ? '#fff' : c.primary, outline);
+  limb(ctx, af.shx, af.shy, af.ex, af.ey, armW, mainC, outline, {});
+  limb(ctx, af.ex, af.ey, af.hx, af.hy, armW - 1.5, mainC, outline, {});
 
-  // ---- PROP DEPAN ----
+  // ---- senjata / prop depan ----
   drawPropFront(ctx, f, P, time);
 
-  ball(ctx, af.hx, af.hy, armW * .64, flash ? '#fff' : c.skin, outline);
+  orb(ctx, af.hx, af.hy, armW * .60, flash ? '#fff' : c.skin, outline);
 
   // ---- kepala ----
   const hy = P.shoulderY + P.headR + 1;
@@ -305,39 +693,33 @@ function drawCharacter(ctx, f, time) {
   ctx.save();
   ctx.translate(hx, hy);
   ctx.rotate(-(P.lean * 0.5 + P.headTilt));
+  const R = P.headR;
 
-  // rambut belakang / sanggul
-  ctx.fillStyle = flash ? '#fff' : c.dark;
-  ctx.beginPath(); ctx.arc(-P.headR * .28, P.headR * .12, P.headR * 1.0, 0, TAU); ctx.fill();
+  drawHeadgear(ctx, f, P, time, flash, 'back');
 
-  ball(ctx, 0, 0, P.headR, flash ? '#fff' : c.skin, outline);
+  // telinga
+  ctx.beginPath();
+  ctx.ellipse(-R * 0.82, R * 0.06, R * 0.20, R * 0.29, -0.2, 0, TAU);
+  ctx.strokeStyle = outline; ctx.lineWidth = 2.2; ctx.stroke();
+  ctx.fillStyle = flash ? '#fff' : shade(c.skin, -.10); ctx.fill();
 
-  drawHeadgear(ctx, f, P, time, flash);
-
-  // ---- muka ----
+  // bola kepala dengan gradasi cahaya dari atas-depan
+  const hg = ctx.createRadialGradient(R * .22, R * .46, R * .06, -R * .12, 0, R * 1.20);
+  hg.addColorStop(0, flash ? '#fff' : shade(c.skin, .13));
+  hg.addColorStop(.52, flash ? '#fff' : c.skin);
+  hg.addColorStop(1, flash ? '#fff' : shade(c.skin, -.17));
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU);
+  ctx.strokeStyle = outline; ctx.lineWidth = 3.2; ctx.stroke();
+  ctx.fillStyle = hg; ctx.fill();
+  // bayangan dagu
   if (!flash) {
-    const ex = P.headR * 0.34, ey = P.headR * 0.06;
-    ctx.fillStyle = '#241634';
-    const angry = (f.state === 'attack' || f.state === 'hurt' || f.state === 'win');
-    const open = f.state === 'ko' || f.state === 'down' || f.state === 'hurt';
-    const eo = open ? 0.35 : angry ? 0.16 : 0;
-    // mata depan
-    ctx.beginPath(); ctx.ellipse(ex + 2, ey, P.headR * .135, P.headR * (.20 + eo), 0, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(ex - 9, ey, P.headR * .115, P.headR * (.19 + eo), 0, 0, TAU); ctx.fill();
-    // kilau mata
-    ctx.fillStyle = 'rgba(255,255,255,.85)';
-    ctx.beginPath(); ctx.arc(ex + 4, ey - P.headR * .07, P.headR * .05, 0, TAU); ctx.fill();
-    // pipi
-    ctx.fillStyle = 'rgba(232,110,110,.45)';
-    ctx.beginPath(); ctx.ellipse(ex - 4, P.headR * .34, P.headR * .19, P.headR * .12, 0, 0, TAU); ctx.fill();
-    // mulut
-    ctx.strokeStyle = '#241634'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-    ctx.beginPath();
-    if (open) { ctx.arc(ex - 2, P.headR * .48, P.headR * .17, 0, Math.PI); }
-    else if (angry) { ctx.moveTo(ex - 9, P.headR * .5); ctx.quadraticCurveTo(ex - 1, P.headR * .62, ex + 6, P.headR * .46); }
-    else { ctx.moveTo(ex - 7, P.headR * .48); ctx.quadraticCurveTo(ex - 1, P.headR * .58, ex + 5, P.headR * .48); }
-    ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,.10)';
+    ctx.beginPath(); ctx.ellipse(R * 0.10, -R * 0.62, R * 0.55, R * 0.30, 0.15, 0, TAU); ctx.fill();
   }
+
+  drawFace(ctx, f, P, flash);
+
+  drawHeadgear(ctx, f, P, time, flash, 'front');
   ctx.restore();
 
   // ---- lengan depan (senjata) sudah; akhir grup ----
@@ -356,67 +738,129 @@ function shade(hex, amt) {
   return `rgb(${r},${g},${b2})`;
 }
 
-/* ---------- kepala khas tiap pahlawan ---------- */
-function drawHeadgear(ctx, f, P, time, flash) {
+/* ---------- kepala khas tiap pahlawan ----------
+   layer 'back' digambar di belakang kepala, 'front' di atas wajah  */
+function drawHeadgear(ctx, f, P, time, flash, layer) {
   const c = f.def.colors, R = P.headR, prop = f.def.build.prop;
-  if (flash) { ctx.fillStyle = '#fff'; }
+  const acc = flash ? '#fff' : c.accent;
+  const OUT = c.dark;
+  const back = layer !== 'front';
+
   if (prop === 'wings') {
-    // mahkota wayang bergerigi
-    ctx.fillStyle = flash ? '#fff' : c.accent;
+    /* ---------- GATOTKACA: kuluk wayang + gelung ---------- */
+    if (back) {
+      ctx.fillStyle = flash ? '#fff' : c.dark;
+      ctx.beginPath(); ctx.ellipse(-R * .36, R * .16, R * .68, R * .62, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-R * .70, R * .46, R * .30, R * .30, 0, 0, TAU); ctx.fill();
+      return;
+    }
+    // mahkota berlapis (di ATAS kepala)
     ctx.beginPath();
-    ctx.moveTo(-R * .95, -R * .3);
-    ctx.lineTo(-R * .55, -R * 1.5);
-    ctx.lineTo(-R * .2, -R * .95);
-    ctx.lineTo(0, -R * 1.72);
-    ctx.lineTo(R * .22, -R * .95);
-    ctx.lineTo(R * .6, -R * 1.45);
-    ctx.lineTo(R * .92, -R * .28);
-    ctx.quadraticCurveTo(0, -R * .72, -R * .95, -R * .3);
+    ctx.moveTo(-R * .96, R * .16);
+    ctx.quadraticCurveTo(-R * .92, R * .98, -R * .52, R * 1.10);
+    ctx.lineTo(-R * .40, R * 1.58);
+    ctx.lineTo(-R * .10, R * 1.18);
+    ctx.lineTo(R * .06, R * 1.76);
+    ctx.lineTo(R * .26, R * 1.16);
+    ctx.lineTo(R * .54, R * 1.54);
+    ctx.lineTo(R * .66, R * .98);
+    ctx.quadraticCurveTo(R * .96, R * .82, R * .94, R * .14);
+    ctx.quadraticCurveTo(0, R * .66, -R * .96, R * .16);
     ctx.closePath();
-    ctx.strokeStyle = c.dark; ctx.lineWidth = 2.4; ctx.stroke(); ctx.fill();
-    // gelung rambut
-    ctx.fillStyle = flash ? '#fff' : c.dark;
-    ctx.beginPath(); ctx.arc(-R * .1, -R * 1.15, R * .42, 0, TAU); ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 2.4; ctx.stroke();
+    ctx.fillStyle = acc; ctx.fill();
+    // tulang tengah mahkota
+    ctx.strokeStyle = 'rgba(120,70,10,.42)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, R * 1.70); ctx.lineTo(0, R * .62); ctx.stroke();
+    // permata di dahi
+    ctx.fillStyle = flash ? '#fff' : c.primary;
+    ctx.beginPath(); ctx.arc(0, R * .74, R * .16, 0, TAU); ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 1.6; ctx.stroke();
+    // ikat kepala
+    ctx.strokeStyle = flash ? '#fff' : c.secondary; ctx.lineWidth = 3.4;
+    ctx.beginPath(); ctx.arc(0, 0, R * 1.0, Math.PI * .10, Math.PI * .90); ctx.stroke();
   } else if (prop === 'mane') {
-    // surai Barong: bulu-bulu besar
-    ctx.fillStyle = flash ? '#fff' : c.accent;
-    for (let i = 0; i < 9; i++) {
-      const a = -Math.PI * 0.12 - i * (Math.PI * 0.86 / 8);
-      const rr = R * (1.62 + Math.sin(time * 8 + i) * .05);
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * R * .95, Math.sin(a) * R * .95);
-      ctx.lineTo(Math.cos(a - .16) * rr, Math.sin(a - .16) * rr);
-      ctx.lineTo(Math.cos(a + .16) * rr, Math.sin(a + .16) * rr);
-      ctx.closePath(); ctx.fill();
+    /* ---------- BARONG: surai mengelilingi wajah + taring ---------- */
+    if (back) {
+      for (let ring = 0; ring < 2; ring++) {
+        const rr = R * (ring ? 1.56 : 1.30);
+        ctx.fillStyle = flash ? '#fff' : (ring ? c.accent : shade(c.accent, -.20));
+        for (let i = 0; i < 13; i++) {
+          const a = -Math.PI * 0.22 + i * (Math.PI * 1.44 / 12);
+          const wob = Math.sin(time * 7 + i * 1.3 + ring) * .04;
+          const L = rr * (1 + wob);
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * R * .92, Math.sin(a) * R * .92);
+          ctx.lineTo(Math.cos(a - .16) * L, Math.sin(a - .16) * L);
+          ctx.lineTo(Math.cos(a + .16) * L, Math.sin(a + .16) * L);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+      return;
     }
-    ctx.strokeStyle = c.dark; ctx.lineWidth = 2.2;
-    ctx.beginPath(); ctx.arc(0, 0, R * 1.02, Math.PI * .75, Math.PI * 2.3); ctx.stroke();
-    // giginya
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.moveTo(R * .55, R * .42); ctx.lineTo(R * .95, R * .3);
-    ctx.lineTo(R * .72, R * .68); ctx.closePath(); ctx.fill();
-  } else if (prop === 'keris') {
-    // sanggul + tusuk emas
-    ctx.fillStyle = flash ? '#fff' : c.dark;
-    ctx.beginPath(); ctx.arc(-R * .45, -R * .55, R * .58, 0, TAU); ctx.fill();
-    ctx.strokeStyle = flash ? '#fff' : c.accent; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(-R * .95, -R * .8); ctx.lineTo(-R * .2, -R * 1.05); ctx.stroke();
+    // tanduk di atas kepala
+    ctx.strokeStyle = OUT; ctx.lineWidth = 2.2;
+    ctx.fillStyle = flash ? '#fff' : c.secondary;
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(s * R * .34, R * .70);
+      ctx.quadraticCurveTo(s * R * .64, R * 1.14, s * R * .42, R * 1.32);
+      ctx.quadraticCurveTo(s * R * .40, R * .98, s * R * .18, R * .76);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
     // hiasan dahi
-    ctx.fillStyle = flash ? '#fff' : c.accent;
-    ctx.beginPath(); ctx.arc(R * .22, -R * .62, R * .16, 0, TAU); ctx.fill();
-  } else if (prop === 'tail') {
-    // mahkota daun + telinga kera
-    ctx.fillStyle = flash ? '#fff' : c.skin;
-    ctx.beginPath(); ctx.ellipse(-R * .08, -R * .12, R * 1.14, R * .62, 0, 0, TAU); ctx.fill();
-    ctx.strokeStyle = c.dark; ctx.lineWidth = 2.2; ctx.stroke();
-    ctx.fillStyle = flash ? '#fff' : c.accent;
-    for (let i = -2; i <= 2; i++) {
-      ctx.beginPath();
-      ctx.moveTo(i * R * .3 - R * .1, -R * .85);
-      ctx.lineTo(i * R * .3 + R * .06, -R * 1.42 - Math.abs(i) * -R * .06);
-      ctx.lineTo(i * R * .3 + R * .2, -R * .85);
-      ctx.closePath(); ctx.fill();
+    ctx.fillStyle = acc;
+    ctx.beginPath();
+    ctx.moveTo(-R * .22, R * .60); ctx.lineTo(0, R * .88); ctx.lineTo(R * .22, R * .60);
+    ctx.lineTo(0, R * .70); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 1.4; ctx.stroke();
+  } else if (prop === 'keris') {
+    /* ---------- SRIKANDI: sanggul + tusuk emas ---------- */
+    if (back) {
+      ctx.fillStyle = flash ? '#fff' : c.dark;
+      ctx.beginPath(); ctx.ellipse(-R * .40, R * .34, R * .68, R * .62, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-R * .74, -R * .18, R * .26, R * .42, -0.4, 0, TAU); ctx.fill();
+      return;
     }
+    // tusuk sanggul di atas kepala
+    ctx.strokeStyle = acc; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-R * .94, R * .74); ctx.lineTo(-R * .14, R * 1.02); ctx.stroke();
+    ctx.fillStyle = acc;
+    ctx.beginPath(); ctx.arc(-R * 1.00, R * .70, R * .11, 0, TAU); ctx.fill();
+    // hiasan dahi
+    ctx.fillStyle = acc;
+    ctx.beginPath();
+    ctx.moveTo(R * .10, R * .74); ctx.lineTo(R * .30, R * .62);
+    ctx.lineTo(R * .10, R * .50); ctx.lineTo(-R * .02, R * .62);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 1.4; ctx.stroke();
+    // ikat rambut
+    ctx.strokeStyle = flash ? '#fff' : c.accent; ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.arc(0, 0, R * 1.0, Math.PI * .28, Math.PI * .92); ctx.stroke();
+  } else if (prop === 'tail') {
+    /* ---------- HANUMAN: mahkota daun + bulu pipi ---------- */
+    if (back) {
+      ctx.fillStyle = flash ? '#fff' : c.secondary;
+      ctx.beginPath(); ctx.ellipse(-R * .06, R * .04, R * 1.16, R * .86, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = c.dark; ctx.lineWidth = 2.2; ctx.stroke();
+      return;
+    }
+    // mahkota daun di atas kepala
+    ctx.fillStyle = acc;
+    for (let i = -2; i <= 2; i++) {
+      const x = i * R * .30, w2 = R * .15, h2 = R * (1.34 - Math.abs(i) * .16);
+      ctx.beginPath();
+      ctx.moveTo(x - w2, R * .80);
+      ctx.quadraticCurveTo(x, h2, x + w2, R * .80);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = OUT; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+    // ikat kepala + permata
+    ctx.strokeStyle = flash ? '#fff' : c.primary; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, R * 1.0, Math.PI * .12, Math.PI * .88); ctx.stroke();
+    ctx.fillStyle = acc;
+    ctx.beginPath(); ctx.arc(0, R * .86, R * .13, 0, TAU); ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 1.4; ctx.stroke();
   }
 }
 
@@ -648,13 +1092,18 @@ function cacheCanvas(w, h) {
   return cv;
 }
 const layerCache = {};
+/* kerapatan piksel saat ini — dipakai agar gambar tetap tajam di layar HD */
+let renderScale = 1;
+function setScale(s) { renderScale = clamp(s || 1, 1, 3); }
 
 function getLayer(key, w, h, drawFn) {
-  const ck = key + '|' + Math.round(w) + 'x' + Math.round(h);
+  const q = renderScale;
+  const ck = key + '|' + Math.round(w) + 'x' + Math.round(h) + '@' + q.toFixed(2);
   if (!layerCache[ck]) {
-    const cv = cacheCanvas(w, h);
+    const cv = cacheCanvas(w * q, h * q);
     const c2 = cv.getContext('2d');
-    drawFn(c2, cv.width, cv.height);
+    c2.scale(q, q);
+    drawFn(c2, w, h);
     layerCache[ck] = cv;
   }
   return layerCache[ck];
@@ -890,7 +1339,7 @@ function drawArenaBand(c, W, H, arena, cam, t) {
     arena.fg(c2, w2, h2);
   });
   const px = -(cam.x - (cam.stageW / 2)) * 0.14;
-  c.drawImage(layer, (W - lw) / 2 + px, 0, layer.width, layer.height);
+  c.drawImage(layer, (W - lw) / 2 + px, 0, lw, H);
 }
 
 /* ------------------------------------------------------------
@@ -1247,7 +1696,8 @@ function drawPortrait(cv, def, t, opt) {
   c.clearRect(0, 0, W, H);
   const o = opt || {};
   const b = def.build;
-  const scale = o.scale || Math.min(W / 130, H / (b.h + 30));
+  const fit = Math.min(W / 150, H / (b.h + 54));
+  const scale = fit * (o.zoom || 1);
   const g = c.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, 'rgba(255,255,255,.10)');
   g.addColorStop(1, 'rgba(255,255,255,0)');
@@ -1277,6 +1727,6 @@ window.PN = window.PN || {};
 window.PN.Render = {
   drawCharacter, drawArenaBand, worldTransform, drawFloor, drawHUD,
   drawParticles, drawProjectile, drawShadow, drawHitboxDebug, drawPortrait,
-  ARENAS, clamp, lerp, shade, roundRect, cacheCanvas,
+  ARENAS, setScale, clamp, lerp, shade, roundRect, cacheCanvas,
 };
 })();
