@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pahlawan Nusantara — Dunia Kiya dan Zhian</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<a class="back" href="../">← Dunia Kiya &amp; Zhian</a>
+
+<!-- ============ TITLE ============ -->
+<section class="screen active" id="screen-title">
+  <div class="title-wrap">
+    <div class="title-kicker">⚔️ DUEL PARA PAHLAWAN</div>
+    <h1 class="title-main"><span>PAHLAWAN</span><span>NUSANTARA</span></h1>
+    <p class="title-sub">Pilih pahlawanmu, kalahkan lawan, rebut kejayaan!<br>
+      <em>Gatotkaca · Barong · Srikandi · Hanuman</em></p>
+
+    <div class="menu">
+      <button class="btn btn-primary" data-act="cpu">🤖 Lawan Komputer</button>
+      <button class="btn btn-two" data-act="duo">👥 2 Pemain</button>
+      <button class="btn btn-train" data-act="train">🎯 Latihan</button>
+      <button class="btn btn-ghost" data-act="help">❓ Cara Main</button>
+    </div>
+
+    <div class="diff-row">
+      <span class="diff-label">Tingkat komputer:</span>
+      <div class="diffs" id="diffs">
+        <button class="chip" data-diff="easy">Mudah</button>
+        <button class="chip active" data-diff="normal">Sedang</button>
+        <button class="chip" data-diff="hard">Sulit</button>
+        <button class="chip" data-diff="expert">Sangat Sulit</button>
+      </div>
+    </div>
+
+    <div class="sound-row">
+      <button class="chip" id="toggle-music">🎵 Musik: ON</button>
+      <button class="chip" id="toggle-sfx">🔊 Suara: ON</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SELECT ============ -->
+<section class="screen" id="screen-select">
+  <div class="select-head">
+    <h2 id="select-title">PEMAIN 1 — PILIH PAHLAWAN</h2>
+    <p id="select-hint">Tekan <kbd>Enter</kbd> atau klik untuk memilih</p>
+  </div>
+
+  <div class="roster" id="roster"></div>
+
+  <div class="arena-pick" id="arena-pick" hidden>
+    <h3>PILIH ARENA</h3>
+    <div class="arenas" id="arenas"></div>
+  </div>
+
+  <div class="select-foot">
+    <div class="picked" id="picked-p1"><span class="pl">P1</span><b>—</b></div>
+    <div class="picked" id="picked-p2"><span class="pl">P2</span><b>—</b></div>
+  </div>
+</section>
+
+<!-- ============ FIGHT ============ -->
+<section class="screen" id="screen-fight">
+  <div class="stage-wrap">
+    <canvas id="game" width="960" height="540"></canvas>
+
+    <div class="touch" id="touch-p1" aria-hidden="true"></div>
+
+    <div class="overlay" id="ov-pause" hidden>
+      <div class="panel">
+        <h2>JEDA</h2>
+        <button class="btn btn-primary" data-pause-act="resume">▶️ Lanjut</button>
+        <button class="btn btn-ghost" data-pause-act="restart">🔄 Ulang Ronde</button>
+        <button class="btn btn-ghost" data-pause-act="quit">🏠 Keluar</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="ov-result" hidden>
+      <div class="panel">
+        <h2 id="result-title">PEMAIN 1 MENANG!</h2>
+        <p id="result-sub"></p>
+        <button class="btn btn-primary" data-result-act="again">🔁 Main Lagi</button>
+        <button class="btn btn-ghost" data-result-act="menu">🏠 Menu Utama</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HELP ============ -->
+<div class="overlay" id="ov-help" hidden>
+  <div class="panel panel-wide">
+    <h2>CARA MAIN</h2>
+    <div class="help-cols">
+      <div>
+        <h4>🎮 Pemain 1</h4>
+        <table class="keys">
+          <tr><td><kbd>A</kbd> <kbd>D</kbd></td><td>Jalan (tekan 2x = lari)</td></tr>
+          <tr><td><kbd>W</kbd></td><td>Lompat (2x = lompat dobel)</td></tr>
+          <tr><td><kbd>S</kbd></td><td>Jongkok / jatuh cepat</td></tr>
+          <tr><td><kbd>Spasi</kbd></td><td>Serangan (3x = rantai)</td></tr>
+          <tr><td><kbd>I</kbd></td><td>Jurus 1</td></tr>
+          <tr><td><kbd>O</kbd></td><td>Jurus 2</td></tr>
+          <tr><td><kbd>P</kbd></td><td>ULTIMATE (meter penuh)</td></tr>
+        </table>
+      </div>
+      <div>
+        <h4>👥 Pemain 2</h4>
+        <table class="keys">
+          <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Jalan (tekan 2x = lari)</td></tr>
+          <tr><td><kbd>↑</kbd></td><td>Lompat</td></tr>
+          <tr><td><kbd>↓</kbd></td><td>Jongkok / jatuh cepat</td></tr>
+          <tr><td><kbd>1</kbd></td><td>Serangan</td></tr>
+          <tr><td><kbd>2</kbd></td><td>Jurus 1</td></tr>
+          <tr><td><kbd>3</kbd></td><td>Jurus 2</td></tr>
+          <tr><td><kbd>4</kbd></td><td>ULTIMATE</td></tr>
+        </table>
+      </div>
+    </div>
+    <h4>💡 Tips</h4>
+    <ul class="tips">
+      <li>Tahan arah <b>menjauh dari lawan</b> untuk menangkis (blok) serangan.</li>
+      <li>Serangan dasar bisa dirantai 3x. Jurus bisa membatalkan serangan dasar.</li>
+      <li>Meter <b>ULTIMATE</b> terisi saat kamu menyerang dan saat kamu kena serangan.</li>
+      <li>Menang 2 ronde dulu = menang pertandingan.</li>
+      <li><kbd>Esc</kbd> untuk jeda, <kbd>R</kbd> untuk ulang ronde.</li>
+    </ul>
+    <button class="btn btn-primary" id="help-close">Mengerti!</button>
+  </div>
+</div>
+
+<script src="audio.js"></script>
+<script src="fighters.js"></script>
+<script src="render.js"></script>
+<script src="ai.js"></script>
+<script src="input.js"></script>
+<script src="engine.js"></script>
+<script src="menu.js"></script>
+</body>
+</html>
