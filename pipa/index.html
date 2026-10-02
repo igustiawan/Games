@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sambung Pipa — Puzzle</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Nunito',system-ui,sans-serif;color:#fff;
+  background:radial-gradient(circle at 50% 0%,#1e3a8a,#122252 45%,#060c1c 100%);
+  background-attachment:fixed;min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:56px 12px 18px;overflow:hidden;
+}
+a.back{
+  position:fixed;top:12px;left:12px;z-index:20;text-decoration:none;
+  color:rgba(255,255,255,.8);font-weight:800;font-size:.82rem;
+  background:rgba(0,0,0,.34);padding:9px 15px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+}
+a.back:hover{color:#fff;background:rgba(0,0,0,.5)}
+
+h1{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:clamp(1.3rem,5.2vw,1.9rem);text-align:center}
+.sub{color:rgba(255,255,255,.6);font-weight:700;font-size:.82rem;margin-top:3px;text-align:center}
+
+.hud{display:flex;gap:10px;width:min(94vw,430px);margin:14px 0 10px}
+.pill{
+  flex:1;background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.14);
+  border-radius:14px;padding:7px 10px;text-align:center;
+}
+.pill .lab{font-size:.6rem;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.5);text-transform:uppercase}
+.pill .val{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.15rem;line-height:1.2;color:#7dd3fc}
+
+.panggung{
+  position:relative;width:min(94vw,430px);aspect-ratio:1;max-height:62vh;
+  border-radius:22px;overflow:hidden;
+  border:3px solid rgba(255,255,255,.14);
+  box-shadow:0 22px 55px rgba(0,0,0,.55);
+  background:#0b1730;
+  touch-action:none;cursor:pointer;
+}
+canvas{display:block;width:100%;height:100%}
+
+.aksi{display:flex;gap:10px;width:min(94vw,430px);margin-top:14px}
+.aksi button{
+  flex:1;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:.95rem;
+  padding:13px 8px;border-radius:16px;border:none;cursor:pointer;color:#fff;
+  background:rgba(255,255,255,.1);border-bottom:4px solid rgba(0,0,0,.3);
+}
+.aksi button:active{transform:translateY(3px);border-bottom-width:1px}
+
+.done{
+  position:fixed;inset:0;display:none;place-items:center;z-index:30;
+  background:rgba(4,10,26,.88);backdrop-filter:blur(7px);padding:20px;
+}
+.done.on{display:grid}
+.card{
+  background:linear-gradient(160deg,#1e3a8a,#0b1730);border:1px solid rgba(255,255,255,.16);
+  border-radius:26px;padding:28px 24px;text-align:center;max-width:350px;width:100%;
+  animation:pop .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.card .em{font-size:3.4rem;line-height:1}
+.card h2{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.5rem;margin-top:6px}
+.card .big{font-family:'Baloo 2',sans-serif;font-size:2.6rem;color:#7dd3fc;margin:6px 0 0}
+.card p{color:rgba(255,255,255,.72);font-weight:700;font-size:.92rem;line-height:1.5;margin-top:10px}
+.card button{
+  margin-top:16px;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.05rem;
+  padding:14px 34px;border-radius:999px;border:none;cursor:pointer;color:#04231c;
+  background:linear-gradient(180deg,#9dffc9,#3ddc97);border-bottom:5px solid #1a8a5c;width:100%;
+}
+.card button:active{transform:translateY(3px);border-bottom-width:2px}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms !important}}
+</style>
+</head>
+<body>
+<a class="back" href="../">← Dunia Kiya &amp; Zhian</a>
+
+<h1>🔧 Sambung Pipa</h1>
+<p class="sub">Sentuh pipa untuk memutar, sambungkan air sampai ke ember!</p>
+
+<div class="hud">
+  <div class="pill"><div class="lab">Level</div><div class="val" id="vLevel">1</div></div>
+  <div class="pill"><div class="lab">Putaran</div><div class="val" id="vPutar">0</div></div>
+  <div class="pill"><div class="lab">Tersambung</div><div class="val" id="vAir">0%</div></div>
+</div>
+
+<div class="panggung" id="panggung"><canvas id="cv"></canvas></div>
+
+<div class="aksi">
+  <button id="ulang">🔄 Acak Ulang</button>
+  <button id="lewat">➡️ Lewati</button>
+</div>
+
+<div class="done" id="done">
+  <div class="card">
+    <div class="em" id="rEmoji">💧</div>
+    <h2 id="rTitle">Air Mengalir!</h2>
+    <div class="big" id="rBig">0</div>
+    <p id="rMsg"></p>
+    <button id="rBtn" onclick="lanjut()">Level Berikutnya →</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const el = id => document.getElementById(id);
+
+const N = 1, E = 2, S = 4, W = 8;      // arah sambungan
+const ARAH = [[0, -1, N, S], [1, 0, E, W], [0, 1, S, N], [-1, 0, W, E]];
+
+let VW = 430, VH = 430;
+let st = null;
+let tata = { sel: 60, ox: 0, oy: 0 };
+
+function ukuran(){
+  const box = document.getElementById('panggung').getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  VW = Math.max(200, Math.round(box.width));
+  VH = Math.max(200, Math.round(box.height));
+  cv.width = Math.round(VW * dpr);
+  cv.height = Math.round(VH * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (st) tataPapan();
+}
+window.addEventListener('resize', ukuran);
+
+function tataPapan(){
+  if (!st) return;
+  const sel = Math.floor(Math.min(VW, VH) / st.n) - 4;
+  tata.sel = sel;
+  tata.ox = (VW - sel * st.n) / 2;
+  tata.oy = (VH - sel * st.n) / 2;
+}
+
+function putarMask(m, k){ return ((m << k) | (m >> (4 - k))) & 15; }
+
+function buatPapan(n, level){
+  // 1. jalur utama dari kiri-atas ke kanan-bawah
+  const asli = new Array(n * n).fill(0);
+  const sudah = new Set();
+  function jalan(x, y){
+    const i = y * n + x;
+    sudah.add(i);
+    if (x === n - 1 && y === n - 1) return true;
+    const urut = ARAH.slice().sort(() => Math.random() - 0.5);
+    for (const [dx, dy, bit, lawan] of urut){
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+      const j = ny * n + nx;
+      if (sudah.has(j)) continue;
+      asli[i] |= bit; asli[j] |= lawan;
+      if (jalan(nx, ny)) return true;
+      asli[i] &= ~bit; asli[j] &= ~lawan;
+    }
+    sudah.delete(i);
+    return false;
+  }
+  jalan(0, 0);
+
+  // 2. pipa tambahan supaya papan terisi (tapi tidak menambah jalur terlalu banyak)
+  for (let i = 0; i < n * n; i++){
+    if (asli[i] === 0) continue;
+    if (Math.random() < 0.22){
+      const x = i % n, y = (i - x) / n;
+      const p = ARAH[Math.floor(Math.random() * 4)];
+      const nx = x + p[0], ny = y + p[1];
+      if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+      const j = ny * n + nx;
+      if (asli[j] === 0) continue;
+      if (asli[i] & p[2]) continue;
+      asli[i] |= p[2]; asli[j] |= p[3];
+    }
+  }
+  // 3. pastikan tidak ada pipa yang benar-benar sendirian
+  for (let i = 0; i < n * n; i++){
+    if (asli[i] !== 0) continue;
+    const x = i % n, y = (i - x) / n;
+    const p = ARAH.slice().sort(() => Math.random() - 0.5)[0];
+    const nx = x + p[0], ny = y + p[1];
+    if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+    const j = ny * n + nx;
+    asli[i] |= p[2]; asli[j] |= p[3];
+  }
+
+  // 4. acak putaran (pipa pertama & terakhir dikunci)
+  const kunci = new Array(n * n).fill(false);
+  kunci[0] = true; kunci[n * n - 1] = true;
+  const putaran = new Array(n * n).fill(0);
+  for (let kali = 0; kali < 40; kali++){
+    for (let i = 1; i < n * n - 1; i++) putaran[i] = Math.floor(Math.random() * 4);
+    if (!cekBeres(asli, putaran, n, kunci)) break;
+  }
+  return { n, asli, putaran, kunci, level, putar: 0 };
+}
+
+function maskKini(i){ return st.kunci[i] ? st.asli[i] : putarMask(st.asli[i], st.putaran[i]); }
+
+/* air mengalir dari pipa pertama mengikuti sambungan yang cocok */
+function alirkan(){
+  const n = st.n;
+  const sampai = new Set([0]);
+  const antre = [0];
+  while (antre.length){
+    const i = antre.shift();
+    const x = i % n, y = (i - x) / n;
+    const m = maskKini(i);
+    for (const [dx, dy, bit, lawan] of ARAH){
+      if (!(m & bit)) continue;
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+      const j = ny * n + nx;
+      if (sampai.has(j)) continue;
+      if (!(maskKini(j) & lawan)) continue;
+      sampai.add(j);
+      antre.push(j);
+    }
+  }
+  return sampai;
+}
+function cekBeres(asli, putaran, n, kunci){
+  const tmp = st; st = { n, asli, putaran, kunci };
+  const air = alirkan();
+  const hasil = air.has(n * n - 1);
+  st = tmp;
+  return hasil;
+}
+
+function mulaiLevel(lv){
+  const n = Math.min(6, 3 + Math.ceil(lv / 2));
+  st = buatPapan(n, lv);
+  tataPapan();
+  el('vLevel').textContent = lv;
+  el('vPutar').textContent = '0';
+  el('done').classList.remove('on');
+  perbaruiAir();
+}
+
+let airSekarang = new Set();
+function perbaruiAir(){
+  airSekarang = alirkan();
+  const persen = Math.round((airSekarang.size / (st.n * st.n)) * 100);
+  el('vAir').textContent = persen + '%';
+}
+
+function putarPipa(i){
+  if (!st || st.kunci[i] || st.selesai) return;
+  st.putaran[i] = (st.putaran[i] + 1) % 4;
+  st.putar++;
+  el('vPutar').textContent = st.putar;
+  bunyi(420 + (st.putaran[i] * 90), 0.07, 0.07);
+  perbaruiAir();
+  if (airSekarang.has(st.n * st.n - 1)) menang();
+}
+
+function menang(){
+  st.selesai = true;
+  nada([660, 880, 1100], 0.09, 0.2);
+  el('rBig').textContent = st.putar + ' putaran';
+  el('rEmoji').textContent = '💧';
+  el('rTitle').textContent = 'Air Mengalir!';
+  el('rMsg').textContent = st.putar <= st.n * 2 ? 'Cepat sekali! Kamu jago menyambung pipa.' : 'Airnya sampai juga. Ayo level berikutnya!';
+  el('rBtn').textContent = 'Level ' + (st.level + 1) + ' →';
+  setTimeout(() => el('done').classList.add('on'), 420);
+}
+function lanjut(){ mulaiLevel(st.level + 1); }
+
+/* ---------- gambar ---------- */
+function gambar(){
+  if (!st) return;
+  const s = tata.sel, ox = tata.ox, oy = tata.oy;
+
+  ctx.fillStyle = '#0b1730';
+  ctx.fillRect(0, 0, VW, VH);
+
+  for (let y = 0; y < st.n; y++){
+    for (let x = 0; x < st.n; x++){
+      const i = y * st.n + x;
+      const px = ox + x * s, py = oy + y * s;
+      const m = maskKini(i);
+      const basah = airSekarang.has(i);
+
+      // kotak
+      ctx.fillStyle = st.kunci[i] ? 'rgba(125,211,252,.14)' : 'rgba(255,255,255,.06)';
+      rrect(px + 2, py + 2, s - 4, s - 4, 10); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+      // pipa
+      const cx = px + s / 2, cy = py + s / 2;
+      const w = Math.max(7, s * 0.20);
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = basah ? '#38bdf8' : '#64748b';
+      ctx.lineWidth = w;
+      for (const [dx, dy, bit] of ARAH){
+        if (!(m & bit)) continue;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + dx * s / 2, cy + dy * s / 2);
+        ctx.stroke();
+      }
+      // sambungan tengah
+      ctx.fillStyle = basah ? '#7dd3fc' : '#94a3b8';
+      ctx.beginPath(); ctx.arc(cx, cy, w * 0.56, 0, Math.PI * 2); ctx.fill();
+      // kilau air
+      if (basah){
+        ctx.strokeStyle = 'rgba(255,255,255,.5)';
+        ctx.lineWidth = Math.max(1.5, w * 0.22);
+        for (const [dx, dy, bit] of ARAH){
+          if (!(m & bit)) continue;
+          ctx.beginPath();
+          ctx.moveTo(cx - dy * w * 0.22, cy - dx * w * 0.22);
+          ctx.lineTo(cx + dx * s / 2 - dy * w * 0.22, cy + dy * s / 2 - dx * w * 0.22);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // keran di kiri-atas
+  ctx.font = `${Math.round(s * 0.6)}px serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🚰', ox + s * 0.5, oy + s * 0.5);
+  // ember di kanan-bawah
+  const bx = ox + (st.n - 1) * s + s * 0.5, by = oy + (st.n - 1) * s + s * 0.5;
+  const sampai = airSekarang.has(st.n * st.n - 1);
+  if (sampai){
+    ctx.fillStyle = 'rgba(56,189,248,.35)';
+    ctx.beginPath(); ctx.arc(bx, by, s * 0.46, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillText('🪣', bx, by);
+}
+
+function rrect(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/* ---------- kendali ---------- */
+const pang = document.getElementById('panggung');
+pang.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (!st) return;
+  const r = cv.getBoundingClientRect();
+  const px = (e.clientX - r.left) / r.width * VW;
+  const py = (e.clientY - r.top) / r.height * VH;
+  const x = Math.floor((px - tata.ox) / tata.sel);
+  const y = Math.floor((py - tata.oy) / tata.sel);
+  if (x < 0 || y < 0 || x >= st.n || y >= st.n) return;
+  putarPipa(y * st.n + x);
+});
+
+el('ulang').onclick = () => {
+  if (!st) return;
+  for (let i = 1; i < st.asli.length - 1; i++) st.putaran[i] = Math.floor(Math.random() * 4);
+  st.putar = 0;
+  el('vPutar').textContent = '0';
+  perbaruiAir();
+  bunyi(300, 0.09, 0.1);
+};
+el('lewat').onclick = () => { lanjut(); bunyi(520, 0.1, 0.1); };
+
+/* ---------- gelung ---------- */
+function loop(){
+  requestAnimationFrame(loop);
+  gambar();
+}
+
+/* ---------- suara ---------- */
+let ac = null;
+function bunyi(f, vol, dur){
+  try{
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t0 = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'triangle'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.15, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.16));
+    o.connect(g); g.connect(ac.destination);
+    o.start(t0); o.stop(t0 + (dur || 0.16) + 0.02);
+  }catch(e){}
+}
+function nada(freqs, jeda, vol){
+  freqs.forEach((f, i) => setTimeout(() => bunyi(f, vol, 0.22), i * jeda * 1000));
+}
+
+ukuran();
+mulaiLevel(1);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

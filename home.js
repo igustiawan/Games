@@ -10,45 +10,81 @@
 'use strict';
 
 /* ---------------- daftar game ----------------
-   cat  : 'main' = game seru, 'belajar' = belajar TK
+   cat  : id kelompok (lihat KELOMPOK di bawah)
    lvl  : tingkat kesulitan 1-3 (ditampilkan sebagai titik)
    prev : nama fungsi pratinjau di PREVIEWS                     */
 const GAMES = [
-  { id:'pahlawan-nusantara', href:'pahlawan-nusantara/', title:'Pahlawan Nusantara',
-    desc:'Adu pahlawan, bisa 2 pemain!', cat:'main', lvl:2, badge:'BARU!', badgeCol:'#e8402a',
-    c1:'#ffb703', c2:'#c1121f', prev:'duel' },
+  /* --- Petualangan --- */
+  { id:'labirin', href:'labirin/', title:'Labirin Harta',
+    desc:'Cari jalan keluar sambil ambil permata!', cat:'petualangan', lvl:2, badge:'BARU!', badgeCol:'#15803d',
+    c1:'#4ade80', c2:'#166534', prev:'labirin' },
 
-  { id:'susun-menara', href:'susun-menara/', title:'Susun Menara',
-    desc:'Tumpuk balok setinggi mungkin!', cat:'main', lvl:1, badge:'BARU!', badgeCol:'#ca8a04',
-    c1:'#facc15', c2:'#713f12', prev:'menara' },
+  { id:'balap', href:'balap/', title:'Balap Mobil',
+    desc:'Hindari mobil, kumpulkan koin!', cat:'petualangan', lvl:2, badge:'BARU!', badgeCol:'#c2410c',
+    c1:'#fb923c', c2:'#7c2d12', prev:'balap' },
 
-  { id:'gelembung', href:'gelembung/', title:'Tembak Gelembung',
-    desc:'Pecahkan gelembung, kejar skor!', cat:'main', lvl:1, badge:'BARU!', badgeCol:'#0284c7',
-    c1:'#38bdf8', c2:'#075985', prev:'gelembung' },
-
-  { id:'snake-game', href:'snake-game/', title:'Snake Arena',
-    desc:'Makan ular lain, pilih skin naga!', cat:'main', lvl:2,
-    c1:'#10b981', c2:'#065f46', prev:'snake' },
-
-  { id:'war-race', href:'war-race/', title:'Zombie Survival',
-    desc:'Tembak zombie, lawan bos!', cat:'main', lvl:3,
-    c1:'#ef4444', c2:'#7f1d1d', prev:'zombie' },
+  { id:'mancing', href:'mancing/', title:'Mancing Ikan',
+    desc:'Turunkan kail, tangkap ikan!', cat:'petualangan', lvl:1, badge:'BARU!', badgeCol:'#0369a1',
+    c1:'#38bdf8', c2:'#0c4a6e', prev:'mancing' },
 
   { id:'dino-run', href:'dino-run/', title:'Dino Run',
-    desc:'Lompat ala Mario, kumpulin koin!', cat:'main', lvl:1,
+    desc:'Lompat ala Mario, kumpulin koin!', cat:'petualangan', lvl:1,
     c1:'#8b5cf6', c2:'#3b0764', prev:'dino' },
 
+  { id:'hole-io', href:'hole-io/', title:'Hole.io',
+    desc:'Lobang rakus, makan seisi kota!', cat:'petualangan', lvl:1,
+    c1:'#14b8a6', c2:'#064e3b', prev:'hole' },
+
+  /* --- Aksi --- */
+  { id:'pahlawan-nusantara', href:'pahlawan-nusantara/', title:'Pahlawan Nusantara',
+    desc:'Adu pahlawan, bisa 2 pemain!', cat:'aksi', lvl:2, badge:'BARU!', badgeCol:'#e8402a',
+    c1:'#ffb703', c2:'#c1121f', prev:'duel' },
+
+  { id:'war-race', href:'war-race/', title:'Zombie Survival',
+    desc:'Tembak zombie, lawan bos!', cat:'aksi', lvl:3,
+    c1:'#ef4444', c2:'#7f1d1d', prev:'zombie' },
+
+  { id:'snake-game', href:'snake-game/', title:'Snake Arena',
+    desc:'Makan ular lain, pilih skin naga!', cat:'aksi', lvl:2,
+    c1:'#10b981', c2:'#065f46', prev:'snake' },
+
+  { id:'gelembung', href:'gelembung/', title:'Tembak Gelembung',
+    desc:'Pecahkan gelembung, kejar skor!', cat:'aksi', lvl:1,
+    c1:'#0ea5e9', c2:'#075985', prev:'gelembung' },
+
+  /* --- Puzzle --- */
+  { id:'pipa', href:'pipa/', title:'Sambung Pipa',
+    desc:'Putar pipa sampai air mengalir!', cat:'puzzle', lvl:2, badge:'BARU!', badgeCol:'#0e7490',
+    c1:'#22d3ee', c2:'#155e75', prev:'pipa' },
+
+  { id:'puzzle-geser', href:'puzzle-geser/', title:'Puzzle Geser',
+    desc:'Geser kotak sampai gambarnya utuh!', cat:'puzzle', lvl:2, badge:'BARU!', badgeCol:'#6d28d9',
+    c1:'#a78bfa', c2:'#4c1d95', prev:'geser' },
+
+  { id:'cari-beda', href:'cari-beda/', title:'Cari Beda',
+    desc:'Temukan perbedaan dua gambar!', cat:'puzzle', lvl:2, badge:'BARU!', badgeCol:'#be123c',
+    c1:'#fb7185', c2:'#881337', prev:'beda' },
+
   { id:'tetris', href:'tetris/', title:'Neon Tetris',
-    desc:'Susun balok, hapus baris, combo!', cat:'main', lvl:2,
+    desc:'Susun balok, hapus baris, combo!', cat:'puzzle', lvl:2,
     c1:'#06b6d4', c2:'#0e4d5e', prev:'tetris' },
 
   { id:'suika', href:'suika/', title:'Suika Fruit',
-    desc:'Jatuhkan buah, gabungkan yang sama!', cat:'main', lvl:1,
+    desc:'Jatuhkan buah, gabungkan yang sama!', cat:'puzzle', lvl:1,
     c1:'#f59e0b', c2:'#92400e', prev:'suika' },
 
-  { id:'hole-io', href:'hole-io/', title:'Hole.io',
-    desc:'Lobang rakus, makan seisi kota!', cat:'main', lvl:1,
-    c1:'#14b8a6', c2:'#064e3b', prev:'hole' },
+  { id:'susun-menara', href:'susun-menara/', title:'Susun Menara',
+    desc:'Tumpuk balok setinggi mungkin!', cat:'puzzle', lvl:1,
+    c1:'#facc15', c2:'#713f12', prev:'menara' },
+
+  /* --- Belajar TK --- */
+  { id:'mewarnai', href:'mewarnai/', title:'Mewarnai Gambar',
+    desc:'Warnai kucing, ikan, bunga, mobil!', cat:'belajar', lvl:1, badge:'BARU!', badgeCol:'#b45309',
+    c1:'#fbbf24', c2:'#b45309', prev:'mewarnai' },
+
+  { id:'belajar-pasangan', href:'belajar-pasangan/', title:'Cari Pasangan',
+    desc:'Buka kartu, cari gambar yang sama!', cat:'belajar', lvl:1, badge:'BARU!', badgeCol:'#be185d',
+    c1:'#f472b6', c2:'#9d174d', prev:'pasangan' },
 
   { id:'belajar-pola', href:'belajar-pola/', title:'Pola Warna',
     desc:'Tebak lanjutan polanya!', cat:'belajar', lvl:1, badge:'BARU!', badgeCol:'#7c3aed',
@@ -57,14 +93,6 @@ const GAMES = [
   { id:'belajar-bentuk', href:'belajar-bentuk/', title:'Tebak Bentuk',
     desc:'Kenali lingkaran, segitiga, bintang!', cat:'belajar', lvl:1, badge:'BARU!', badgeCol:'#1d4ed8',
     c1:'#60a5fa', c2:'#1e40af', prev:'bentuk' },
-
-  { id:'belajar-pasangan', href:'belajar-pasangan/', title:'Cari Pasangan',
-    desc:'Buka kartu, cari gambar yang sama!', cat:'belajar', lvl:1, badge:'BARU!', badgeCol:'#be185d',
-    c1:'#f472b6', c2:'#9d174d', prev:'pasangan' },
-
-  { id:'mewarnai', href:'mewarnai/', title:'Mewarnai Gambar',
-    desc:'Warnai kucing, ikan, bunga, mobil!', cat:'belajar', lvl:1, badge:'BARU!', badgeCol:'#b45309',
-    c1:'#fbbf24', c2:'#b45309', prev:'mewarnai' },
 
   { id:'belajar-huruf', href:'belajar-huruf/', title:'Isi Huruf',
     desc:'Tebak huruf yang hilang!', cat:'belajar', lvl:1,
@@ -77,6 +105,15 @@ const GAMES = [
   { id:'belajar-warna', href:'belajar-warna/', title:'Tebak Warna',
     desc:'Lihat warnanya, pilih namanya!', cat:'belajar', lvl:1,
     c1:'#e91e63', c2:'#880e4f', prev:'warna' },
+];
+
+/* ---------------- kelompok ----------------
+   Urutan di sini menentukan urutan bagian di halaman.       */
+const KELOMPOK = [
+  { id:'petualangan', judul:'Petualangan', emoji:'🧭' },
+  { id:'aksi',        judul:'Aksi',        emoji:'⚔️' },
+  { id:'puzzle',      judul:'Puzzle',      emoji:'🧩' },
+  { id:'belajar',     judul:'Belajar TK',  emoji:'📚' },
 ];
 
 /* ============================================================
@@ -742,7 +779,255 @@ const PREVIEWS = {
       }
     }
   },
+
+  /* ---- Labirin Harta: koridor berkelok menuju permata ---- */
+  labirin(c, w, h, t) {
+    c.fillStyle = '#0f5132'; c.fillRect(0, 0, w, h);
+    const baris = 4;
+    const y0 = h * 0.16, dy = (h * 0.66) / (baris - 1);
+    const xa = w * 0.16, xb = w * 0.84;
+    const titik = [];
+    for (let r = 0; r < baris; r++){
+      const y = y0 + r * dy;
+      if (r === 0) titik.push([xa, y]);
+      else titik.push([r % 2 ? xb : xa, y]);
+      titik.push([r % 2 ? xa : xb, y]);
+    }
+    // koridor
+    c.strokeStyle = '#1f7a4c';
+    c.lineWidth = h * 0.145;
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath();
+    titik.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]));
+    c.stroke();
+    // tepi koridor
+    c.strokeStyle = 'rgba(233,245,208,.35)';
+    c.lineWidth = Math.max(1.5, h * 0.012);
+    c.beginPath();
+    titik.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]));
+    c.stroke();
+    // permata di ujung
+    const akhir = titik[titik.length - 1];
+    c.font = `${Math.round(h * 0.11)}px serif`;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('💎', akhir[0], akhir[1] + Math.sin(t * 3) * 2);
+    // pemain menyusuri koridor
+    const p = jalurTitik(titik, (t * 0.22) % 1);
+    c.fillStyle = '#4dabf7';
+    c.beginPath(); c.arc(p[0], p[1], h * 0.055, 0, TAU); c.fill();
+    c.strokeStyle = '#123a63'; c.lineWidth = 2; c.stroke();
+    c.fillStyle = '#fff';
+    c.beginPath();
+    c.arc(p[0] - h * 0.018, p[1] - h * 0.012, h * 0.014, 0, TAU);
+    c.arc(p[0] + h * 0.018, p[1] - h * 0.012, h * 0.014, 0, TAU);
+    c.fill();
+  },
+
+  /* ---- Balap Mobil ---- */
+  balap(c, w, h, t) {
+    c.fillStyle = '#1f6b3a'; c.fillRect(0, 0, w, h);
+    const rw = w * 0.62, rx = (w - rw) / 2, lw = rw / 3;
+    c.fillStyle = '#3a3a44'; c.fillRect(rx, 0, rw, h);
+    c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 3;
+    c.setLineDash([18, 18]);
+    c.lineDashOffset = -(t * 90) % 36;
+    for (let i = 1; i < 3; i++){
+      const x = rx + lw * i;
+      c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke();
+    }
+    c.setLineDash([]);
+    const mobil2 = (cx, cy, cw2, ch2, warna) => {
+      c.fillStyle = 'rgba(0,0,0,.3)';
+      rr(c, cx - cw2 / 2 + 2, cy - ch2 / 2 + 3, cw2, ch2, 7); c.fill();
+      c.fillStyle = warna;
+      rr(c, cx - cw2 / 2, cy - ch2 / 2, cw2, ch2, 7); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.32)';
+      rr(c, cx - cw2 * .30, cy - ch2 * .34, cw2 * .60, ch2 * .20, 4); c.fill();
+    };
+    for (let i = 0; i < 2; i++){
+      const k = (t * 0.34 + i * 0.5) % 1;
+      mobil2(rx + lw * (1.5 + (i ? 1 : -1)), -30 + k * (h + 70), lw * 0.64, h * 0.21,
+        ['#ef4444', '#a855f7'][i]);
+    }
+    const lane = Math.round(1 + Math.sin(t * 1.1));
+    mobil2(rx + lw * (lane + 0.5), h * 0.74, lw * 0.70, h * 0.23, '#3b82f6');
+  },
+
+  /* ---- Mancing Ikan ---- */
+  mancing(c, w, h, t) {
+    const perm = h * 0.30;
+    const ls = c.createLinearGradient(0, 0, 0, perm);
+    ls.addColorStop(0, '#7dd3fc'); ls.addColorStop(1, '#e0f2fe');
+    c.fillStyle = ls; c.fillRect(0, 0, w, perm);
+    const wa = c.createLinearGradient(0, perm, 0, h);
+    wa.addColorStop(0, '#0ea5e9'); wa.addColorStop(1, '#062f4d');
+    c.fillStyle = wa; c.fillRect(0, perm, w, h - perm);
+    c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 2.5;
+    c.beginPath();
+    for (let x = 0; x <= w; x += 6){
+      const y = perm + Math.sin(x * 0.08 + t * 2) * 3;
+      x ? c.lineTo(x, y) : c.moveTo(x, y);
+    }
+    c.stroke();
+    // ikan berenang
+    for (let i = 0; i < 2; i++){
+      const k = (t * (0.22 + i * 0.1) + i * 0.5) % 1;
+      const x = k * w, y = perm + (h - perm) * (0.34 + i * 0.34);
+      c.fillStyle = i ? '#f9a8d4' : '#ffd166';
+      c.beginPath(); c.moveTo(x - 13, y); c.lineTo(x - 25, y - 8); c.lineTo(x - 25, y + 8); c.closePath(); c.fill();
+      c.beginPath(); c.ellipse(x, y, 15, 9, 0, 0, TAU); c.fill();
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(x + 6, y - 2, 3.6, 0, TAU); c.fill();
+      c.fillStyle = '#0f172a'; c.beginPath(); c.arc(x + 7, y - 2, 1.8, 0, TAU); c.fill();
+    }
+    // kail naik-turun
+    const ky = perm + 16 + (Math.sin(t * 1.3) * 0.5 + 0.5) * (h - perm - 42);
+    c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 1.6;
+    c.beginPath(); c.moveTo(w * 0.5, perm - 26); c.lineTo(w * 0.5, ky); c.stroke();
+    c.fillStyle = '#fb7185';
+    c.beginPath(); c.arc(w * 0.5, ky, 5.5, 0, TAU); c.fill();
+    // perahu
+    c.save();
+    c.translate(w * 0.5, perm + Math.sin(t * 1.6) * 3);
+    c.fillStyle = '#8b5e3c';
+    c.beginPath(); c.moveTo(-46, 0); c.quadraticCurveTo(0, 24, 46, 0); c.closePath(); c.fill();
+    c.fillStyle = '#fbbf24';
+    c.beginPath(); c.arc(0, -22, 11, 0, TAU); c.fill();
+    c.fillStyle = '#fde68a';
+    c.beginPath(); c.arc(0, -24, 8, 0, TAU); c.fill();
+    c.restore();
+  },
+
+  /* ---- Sambung Pipa: air mengalir melewati pipa ---- */
+  pipa(c, w, h, t) {
+    c.fillStyle = '#0b1730'; c.fillRect(0, 0, w, h);
+    const n = 4, m = 3;
+    const sel = Math.min((w * 0.86) / m, (h * 0.86) / n);
+    const ox = (w - sel * m) / 2, oy = (h - sel * n) / 2;
+    const peta = [
+      [2 | 4, 8 | 2, 8 | 4],
+      [1 | 4, 1 | 2, 8 | 1],
+      [1 | 2, 8 | 2, 8 | 1],
+      [0, 1 | 2, 8 | 1],
+    ];
+    const k = (t % 4) / 4;
+    const alir = Math.floor(k * 12);
+    let hitung = 0;
+    for (let y = 0; y < n; y++){
+      for (let x = 0; x < m; x++){
+        const px = ox + x * sel, py = oy + y * sel;
+        const basah = hitung < alir;
+        hitung++;
+        c.fillStyle = 'rgba(255,255,255,.06)';
+        rr(c, px + 2, py + 2, sel - 4, sel - 4, 8); c.fill();
+        const w2 = Math.max(6, sel * 0.22);
+        const cx = px + sel / 2, cy = py + sel / 2;
+        const mm = peta[y][x];
+        c.lineCap = 'round';
+        c.strokeStyle = basah ? '#38bdf8' : '#64748b';
+        c.lineWidth = w2;
+        const sisi = [[1, cx, cy, cx, py], [2, cx, cy, px + sel, cy], [4, cx, cy, cx, py + sel], [8, cx, cy, px, cy]];
+        sisi.forEach(s => {
+          if (!(mm & s[0])) return;
+          c.beginPath(); c.moveTo(s[1], s[2]); c.lineTo(s[3], s[4]); c.stroke();
+        });
+        c.fillStyle = basah ? '#7dd3fc' : '#94a3b8';
+        c.beginPath(); c.arc(cx, cy, w2 * 0.56, 0, TAU); c.fill();
+      }
+    }
+  },
+
+  /* ---- Puzzle Geser: kotak bergeser ke tempatnya ---- */
+  geser(c, w, h, t) {
+    c.fillStyle = '#2a1a52'; c.fillRect(0, 0, w, h);
+    const size = Math.min(w, h) * 0.78;
+    const tw = size / 3;
+    const ox = (w - size) / 2, oy = (h - size) / 2;
+    const k = (t % 3.6) / 3.6;
+    const langkah = (k > 0.42 && k < 0.72) ? 1 : 0;
+    const papan = [0, 1, 2, 3, 4, 5, 6, 7, null];
+    if (langkah){ papan[8] = 7; papan[7] = null; }
+    const W2 = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899'];
+    for (let i = 0; i < 9; i++){
+      const x = ox + (i % 3) * tw, y = oy + Math.floor(i / 3) * tw;
+      const t2 = papan[i];
+      if (t2 === null){
+        c.fillStyle = 'rgba(255,255,255,.06)';
+        rr(c, x + 2, y + 2, tw - 4, tw - 4, 6); c.fill();
+        continue;
+      }
+      c.fillStyle = W2[t2 % W2.length];
+      rr(c, x + 2, y + 2, tw - 4, tw - 4, 6); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.22)';
+      rr(c, x + 7, y + 7, tw - 14, 5, 3); c.fill();
+    }
+  },
+
+  /* ---- Cari Beda: dua gambar, satu beda ditemukan ---- */
+  beda(c, w, h, t) {
+    c.fillStyle = '#04201f'; c.fillRect(0, 0, w, h);
+    const pad = w * 0.07, gap = h * 0.07;
+    const pw = w - pad * 2, ph = (h - pad * 2 - gap) / 2;
+    const pan = (x, y, versi) => {
+      c.save();
+      c.beginPath(); rr(c, x, y, pw, ph, 10); c.clip();
+      c.fillStyle = '#87ceeb'; c.fillRect(x, y, pw, ph);
+      c.fillStyle = '#fde047';
+      c.beginPath(); c.arc(x + pw * 0.83, y + ph * 0.25, ph * 0.15, 0, TAU); c.fill();
+      c.fillStyle = '#7c4a21';
+      c.fillRect(x + pw * 0.255, y + ph * 0.56, pw * 0.035, ph * 0.34);
+      c.fillStyle = versi ? '#22c55e' : '#ef4444';
+      c.beginPath(); c.arc(x + pw * 0.27, y + ph * 0.50, ph * 0.22, 0, TAU); c.fill();
+      c.fillStyle = '#ec4899';
+      c.beginPath(); c.arc(x + pw * 0.63, y + ph * 0.78, ph * 0.095, 0, TAU); c.fill();
+      c.fillStyle = '#fff';
+      c.beginPath();
+      c.arc(x + pw * 0.52, y + ph * 0.22, ph * 0.10, 0, TAU);
+      c.arc(x + pw * 0.62, y + ph * 0.25, ph * 0.08, 0, TAU);
+      c.fill();
+      c.restore();
+      c.strokeStyle = 'rgba(255,255,255,.3)'; c.lineWidth = 2.5;
+      rr(c, x, y, pw, ph, 10); c.stroke();
+    };
+    pan(pad, pad, true);
+    pan(pad, pad + ph + gap, false);
+    const bx = pad + pw * 0.27, byTop = pad + ph * 0.50, byBot = pad + ph + gap + ph * 0.50;
+    const k = (t % 3.4) / 3.4;
+    if (k > 0.34){
+      const a = Math.min(1, (k - 0.34) * 4);
+      c.strokeStyle = `rgba(74,222,128,${a})`;
+      c.lineWidth = 4;
+      c.beginPath(); c.arc(bx, byTop, ph * 0.26, 0, TAU); c.stroke();
+      c.beginPath(); c.arc(bx, byBot, ph * 0.26, 0, TAU); c.stroke();
+    } else {
+      const f = k / 0.34;
+      const mx = pad + pw * 0.78 - f * pw * 0.48;
+      const my = pad + ph * 0.80 - f * ph * 0.30;
+      c.strokeStyle = '#e2e8f0'; c.lineWidth = 4;
+      c.beginPath(); c.arc(mx, my, ph * 0.16, 0, TAU); c.stroke();
+      c.beginPath(); c.moveTo(mx + ph * 0.11, my + ph * 0.11); c.lineTo(mx + ph * 0.23, my + ph * 0.23); c.stroke();
+    }
+  },
 };
+
+/* panjang total & titik pada jalur (dipakai pratinjau labirin) */
+function jalurTitik(titik, k){
+  const seg = [];
+  let total = 0;
+  for (let i = 1; i < titik.length; i++){
+    const d = Math.hypot(titik[i][0] - titik[i - 1][0], titik[i][1] - titik[i - 1][1]);
+    seg.push(d); total += d;
+  }
+  let s = k * total;
+  for (let i = 0; i < seg.length; i++){
+    if (s <= seg[i]){
+      const f = seg[i] ? s / seg[i] : 0;
+      return [titik[i][0] + (titik[i + 1][0] - titik[i][0]) * f,
+              titik[i][1] + (titik[i + 1][1] - titik[i][1]) * f];
+    }
+    s -= seg[i];
+  }
+  return titik[titik.length - 1];
+}
 
 /* ============================================================
    Suara (disintesis, tanpa file)
@@ -796,9 +1081,10 @@ function bumpPlay(id) {
 }
 
 /* ============================================================
-   Membangun kartu
+   Membangun kartu & bagian per kelompok
    ============================================================ */
-const grid = document.getElementById('grid');
+const sectionsBox = document.getElementById('sections');
+const filtersBox = document.getElementById('filters');
 const recentGrid = document.getElementById('recent-grid');
 const recentSect = document.getElementById('recent');
 const emptyBox = document.getElementById('empty');
@@ -854,13 +1140,54 @@ function makeCard(g, mini) {
   return a;
 }
 
-function build() {
-  GAMES.forEach((g, i) => {
-    const c = makeCard(g, false);
-    c.style.animationDelay = (i * 0.045) + 's';
-    grid.appendChild(c);
-    c._prev(c._ctx, 400, 250, c._phase);   // gambar sekali di awal
-    cards.push(c);
+function buildSections() {
+  sectionsBox.innerHTML = '';
+  KELOMPOK.forEach(k => {
+    const daftar = GAMES.filter(g => g.cat === k.id);
+    if (!daftar.length) return;
+
+    const sect = document.createElement('section');
+    sect.className = 'sect';
+    sect.dataset.cat = k.id;
+
+    const head = document.createElement('div');
+    head.className = 'sect-head';
+    const h2 = document.createElement('h2');
+    h2.innerHTML = k.emoji + ' ' + k.judul +
+      ' <span class="jml">' + daftar.length + ' game</span>';
+    const line = document.createElement('div');
+    line.className = 'line';
+    head.appendChild(h2); head.appendChild(line);
+    sect.appendChild(head);
+
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    daftar.forEach((g, i) => {
+      const c = makeCard(g, false);
+      c.style.animationDelay = (i * 0.04) + 's';
+      grid.appendChild(c);
+      c._prev(c._ctx, 400, 250, c._phase);   // gambar sekali di awal
+      cards.push(c);
+    });
+    sect.appendChild(grid);
+    sectionsBox.appendChild(sect);
+  });
+}
+
+function buildChips() {
+  filtersBox.innerHTML = '';
+  const buat = (id, emoji, label, jml) => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (id === 'semua' ? ' on' : '');
+    b.dataset.f = id;
+    b.innerHTML = emoji + ' ' + label + ' <span class="n">' + jml + '</span>';
+    b.addEventListener('click', () => { Sfx.tap(); applyFilter(id); });
+    filtersBox.appendChild(b);
+  };
+  buat('semua', '🌈', 'Semua', GAMES.length);
+  KELOMPOK.forEach(k => {
+    const n = GAMES.filter(g => g.cat === k.id).length;
+    if (n) buat(k.id, k.emoji, k.judul, n);
   });
 }
 
@@ -876,29 +1203,34 @@ function buildRecent() {
     const c = makeCard(g, true);
     recentGrid.appendChild(c);
     c._prev(c._ctx, 400, 250, c._phase);   // gambar sekali di awal
+    c._visible = true;
   });
 }
 
 /* ============================================================
-   Saringan kategori
+   Saringan kelompok
    ============================================================ */
 function applyFilter(f) {
   filter = f;
-  document.querySelectorAll('.chip').forEach(ch => {
+  filtersBox.querySelectorAll('.chip').forEach(ch => {
     ch.classList.toggle('on', ch.dataset.f === f);
   });
   let shown = 0;
+  sectionsBox.querySelectorAll('.sect').forEach(sect => {
+    const cocok = (f === 'semua' || sect.dataset.cat === f);
+    sect.classList.toggle('hide', !cocok);
+    if (cocok) shown++;
+  });
   cards.forEach(c => {
-    const ok = f === 'semua' || c.dataset.cat === f;
-    c.classList.toggle('hide', !ok);
-    if (ok) shown++;
+    c.classList.toggle('hide', !!c.closest('.sect.hide'));
   });
   emptyBox.classList.toggle('hide', shown > 0);
+
   // animasi masuk ulang
   cards.filter(c => !c.classList.contains('hide')).forEach((c, i) => {
     c.style.animation = 'none';
     void c.offsetWidth;
-    c.style.animation = `pop .38s cubic-bezier(.34,1.56,.64,1) ${i * 0.03}s backwards`;
+    c.style.animation = `pop .38s cubic-bezier(.34,1.56,.64,1) ${Math.min(i, 12) * 0.03}s backwards`;
   });
 }
 
@@ -962,7 +1294,8 @@ function surprise() {
    Nyalakan
    ============================================================ */
 function boot() {
-  build();
+  buildSections();
+  buildChips();
   buildRecent();
   applyFilter('semua');
 
@@ -973,10 +1306,6 @@ function boot() {
   cards.concat(Array.from(recentGrid.children)).forEach(c => io.observe(c));
 
   document.getElementById('surprise').addEventListener('click', surprise);
-
-  document.querySelectorAll('.chip').forEach(ch => {
-    ch.addEventListener('click', () => { Sfx.tap(); applyFilter(ch.dataset.f); });
-  });
 
   // latar bergerak
   const sky = document.getElementById('sky');

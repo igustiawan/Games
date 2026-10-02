@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Balap Mobil — Petualangan</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Nunito',system-ui,sans-serif;color:#fff;
+  background:radial-gradient(circle at 50% 0%,#3a2a6b,#1e1540 45%,#0a0718 100%);
+  background-attachment:fixed;min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:56px 12px 16px;overflow:hidden;
+}
+a.back{
+  position:fixed;top:12px;left:12px;z-index:20;text-decoration:none;
+  color:rgba(255,255,255,.8);font-weight:800;font-size:.82rem;
+  background:rgba(0,0,0,.34);padding:9px 15px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+}
+a.back:hover{color:#fff;background:rgba(0,0,0,.5)}
+
+.hud{display:flex;gap:10px;width:min(94vw,400px);margin-bottom:10px;align-items:center}
+.pill{
+  background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.14);
+  border-radius:14px;padding:7px 12px;text-align:center;min-width:78px;
+}
+.pill .lab{font-size:.6rem;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.5);text-transform:uppercase}
+.pill .val{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.1rem;line-height:1.2;color:#ffd166}
+.nyawa{margin-left:auto;font-size:1.35rem;letter-spacing:2px}
+
+.panggung{
+  position:relative;width:min(94vw,400px);aspect-ratio:3/4.4;max-height:66vh;
+  border-radius:22px;overflow:hidden;
+  border:3px solid rgba(255,255,255,.14);
+  box-shadow:0 22px 55px rgba(0,0,0,.55);
+  touch-action:none;cursor:pointer;
+}
+canvas{display:block;width:100%;height:100%}
+
+.petunjuk{
+  position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);
+  text-align:center;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.05rem;
+  color:rgba(255,255,255,.9);text-shadow:0 3px 10px rgba(0,0,0,.8);
+  pointer-events:none;transition:opacity .4s;
+}
+.petunjuk.hilang{opacity:0}
+
+.done{
+  position:fixed;inset:0;display:none;place-items:center;z-index:30;
+  background:rgba(8,4,20,.88);backdrop-filter:blur(7px);padding:20px;
+}
+.done.on{display:grid}
+.card{
+  background:linear-gradient(160deg,#33206a,#181040);border:1px solid rgba(255,255,255,.16);
+  border-radius:26px;padding:28px 24px;text-align:center;max-width:350px;width:100%;
+  animation:pop .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.card .em{font-size:3.4rem;line-height:1}
+.card h2{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.5rem;margin-top:6px}
+.card .lbl{font-size:.72rem;font-weight:800;letter-spacing:.12em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-top:10px}
+.card .big{font-family:'Baloo 2',sans-serif;font-size:2.8rem;color:#ffd166;line-height:1}
+.card p{color:rgba(255,255,255,.72);font-weight:700;font-size:.9rem;line-height:1.5;margin-top:10px}
+.card .rekor{color:rgba(255,255,255,.55);font-weight:800;font-size:.84rem;margin-top:6px}
+.card button{
+  margin-top:16px;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.05rem;
+  padding:14px 34px;border-radius:999px;border:none;cursor:pointer;color:#3a2405;
+  background:linear-gradient(180deg,#ffe08a,#ffc23c);border-bottom:5px solid #b8801a;width:100%;
+}
+.card button:active{transform:translateY(3px);border-bottom-width:2px}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms !important}}
+</style>
+</head>
+<body>
+<a class="back" href="../">← Dunia Kiya &amp; Zhian</a>
+
+<div class="hud">
+  <div class="pill"><div class="lab">Jarak</div><div class="val" id="vJarak">0</div></div>
+  <div class="pill"><div class="lab">Koin</div><div class="val" id="vKoin">0</div></div>
+  <div class="nyawa" id="vNyawa">❤️❤️❤️</div>
+</div>
+
+<div class="panggung" id="panggung">
+  <canvas id="cv"></canvas>
+  <div class="petunjuk" id="petunjuk">👆 Sentuh kiri / kanan untuk pindah jalur</div>
+</div>
+
+<div class="done" id="done">
+  <div class="card">
+    <div class="em" id="rEmoji">🏁</div>
+    <h2 id="rTitle">Selesai!</h2>
+    <div class="lbl">Jarak</div>
+    <div class="big" id="rJarak">0</div>
+    <div class="rekor" id="rKoin"></div>
+    <div class="rekor" id="rBest"></div>
+    <p id="rMsg"></p>
+    <button onclick="restart()">Main Lagi!</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const el = id => document.getElementById(id);
+
+let VW = 400, VH = 586;
+let st = null;
+
+function ukuran(){
+  const box = document.getElementById('panggung').getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  VW = Math.max(200, Math.round(box.width));
+  VH = Math.max(280, Math.round(box.height));
+  cv.width = Math.round(VW * dpr);
+  cv.height = Math.round(VH * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (st){ tataJalan(); st.px = jalurX(st.jalur); }
+}
+window.addEventListener('resize', ukuran);
+
+const JALUR = 3;
+let jalan = { w: 0, x: 0, lw: 0 };
+
+function tataJalan(){
+  jalan.w = Math.min(VW * 0.86, 330);
+  jalan.x = (VW - jalan.w) / 2;
+  jalan.lw = jalan.w / JALUR;
+}
+function jalurX(i){ return jalan.x + jalan.lw * (i + 0.5); }
+
+const WARNA_MUSUH = ['#ef4444', '#f59e0b', '#8b5cf6', '#10b981'];
+
+function baru(){
+  st = {
+    jalur: 1, px: 0, py: 0,
+    musuh: [], koin: [], poin: [],
+    jarak: 0, koinAmbil: 0, nyawa: 3,
+    laju: 220, t: 0, spawn: 0, spawnKoin: 1.2,
+    kebal: 0, goyang: 0, jalan: true, kunci: false,
+    best: +(localStorage.getItem('balap.rekor') || 0),
+  };
+  tataJalan();
+  st.px = jalurX(1);
+  st.py = VH - 110;
+  el('done').classList.remove('on');
+  el('vJarak').textContent = '0';
+  el('vKoin').textContent = '0';
+  el('vNyawa').textContent = '❤️❤️❤️';
+  const p = el('petunjuk');
+  p.classList.remove('hilang');
+  setTimeout(() => p.classList.add('hilang'), 2600);
+}
+
+function pindah(d){
+  if (!st) return;
+  const n = Math.max(0, Math.min(JALUR - 1, st.jalur + d));
+  if (n === st.jalur) return;
+  st.jalur = n;
+  bunyi(300 + d * 90, 0.06, 0.06);
+}
+
+function update(dt){
+  if (!st) return;
+  st.t += dt;
+  st.goyang *= 0.88;
+  if (!st.jalan){
+    st.poin.forEach(p => { p.y += p.vy * dt; p.hidup -= dt; });
+    st.poin = st.poin.filter(p => p.hidup > 0);
+    return;
+  }
+
+  st.laju = 220 + Math.min(360, st.jarak * 0.9);
+  st.jarak += st.laju * dt * 0.1;
+  el('vJarak').textContent = Math.floor(st.jarak);
+
+  // posisi pemain menghampiri tengah jalur
+  st.px += (jalurX(st.jalur) - st.px) * Math.min(1, dt * 12);
+  st.py = VH - 110;
+  if (st.kebal > 0) st.kebal -= dt;
+
+  // munculkan musuh
+  st.spawn -= dt;
+  if (st.spawn <= 0){
+    st.spawn = Math.max(0.55, 1.25 - st.jarak * 0.0016) * (0.8 + Math.random() * 0.6);
+    // jangan tutup semua jalur sekaligus
+    const dipakai = st.musuh.filter(m => m.y < 0).map(m => m.jalur);
+    const bebas = [0, 1, 2].filter(j => !dipakai.includes(j));
+    if (bebas.length){
+      const j = bebas[Math.floor(Math.random() * bebas.length)];
+      st.musuh.push({ jalur: j, y: -90, w: jalan.lw * 0.66, h: 84, warna: WARNA_MUSUH[Math.floor(Math.random() * 4)], laju: 0.52 + Math.random() * 0.22 });
+    }
+  }
+  // munculkan koin
+  st.spawnKoin -= dt;
+  if (st.spawnKoin <= 0){
+    st.spawnKoin = 1.1 + Math.random() * 1.4;
+    const j = Math.floor(Math.random() * JALUR);
+    if (!st.musuh.some(m => m.jalur === j && m.y < VH * 0.3)) st.koin.push({ jalur: j, y: -40, ambil: false, fase: Math.random() * 6 });
+  }
+
+  // gerakkan musuh & koin ke bawah
+  const dasar = st.laju;
+  for (let i = st.musuh.length - 1; i >= 0; i--){
+    const m = st.musuh[i];
+    m.y += (dasar * m.laju + 40) * dt;
+    if (m.y > VH + 110) st.musuh.splice(i, 1);
+  }
+  for (let i = st.koin.length - 1; i >= 0; i--){
+    const k = st.koin[i];
+    k.y += dasar * 0.85 * dt;
+    if (k.y > VH + 50) st.koin.splice(i, 1);
+  }
+
+  // tabrakan
+  const pxl = st.px - jalan.lw * 0.34, pxr = st.px + jalan.lw * 0.34;
+  for (let i = st.musuh.length - 1; i >= 0; i--){
+    const m = st.musuh[i];
+    const mx = jalurX(m.jalur), mxl = mx - m.w / 2, mxr = mx + m.w / 2;
+    if (pxl < mxr && pxr > mxl && st.py - 42 < m.y + m.h / 2 && st.py + 42 > m.y - m.h / 2){
+      st.musuh.splice(i, 1);
+      if (st.kebal <= 0) kena();
+    }
+  }
+  for (let i = st.koin.length - 1; i >= 0; i--){
+    const k = st.koin[i];
+    const kx = jalurX(k.jalur);
+    if (Math.abs(kx - st.px) < jalan.lw * 0.5 && Math.abs(k.y - st.py) < 46){
+      st.koin.splice(i, 1);
+      st.koinAmbil++;
+      el('vKoin').textContent = st.koinAmbil;
+      poi(kx, k.y, '+1', '#ffd166');
+      bunyi(880 + Math.random() * 200, 0.06, 0.1);
+    }
+  }
+
+  // poin melayang
+  st.poin.forEach(p => { p.y += p.vy * dt; p.hidup -= dt; });
+  st.poin = st.poin.filter(p => p.hidup > 0);
+}
+
+function poi(x, y, teks, warna){ st.poin.push({ x, y, teks, warna, vy: -50, hidup: 0.8 }); }
+
+function kena(){
+  st.nyawa--;
+  st.kebal = 1.4;
+  st.goyang = 16;
+  el('vNyawa').textContent = '❤️'.repeat(Math.max(0, st.nyawa)) + '🖤'.repeat(Math.max(0, 3 - st.nyawa));
+  bunyi(180, 0.22, 0.26);
+  if (st.nyawa <= 0) selesai();
+}
+
+function selesai(){
+  st.jalan = false;
+  const jrk = Math.floor(st.jarak);
+  const rekorBaru = jrk > st.best;
+  if (rekorBaru){ st.best = jrk; try{ localStorage.setItem('balap.rekor', jrk); }catch(e){} }
+  el('rJarak').textContent = jrk;
+  el('rKoin').textContent = 'Koin terkumpul: ' + st.koinAmbil;
+  el('rBest').textContent = 'Rekor jarak: ' + st.best;
+  el('rEmoji').textContent = rekorBaru ? '🏆' : '🏁';
+  el('rTitle').textContent = rekorBaru ? 'Rekor Baru!' : 'Mobil Berhenti';
+  el('rMsg').textContent = jrk > 800 ? 'Jauh sekali! Kamu pintar menghindar.' : 'Ayo coba lagi, hindari mobil merah ya.';
+  setTimeout(() => el('done').classList.add('on'), 480);
+  nada([500, 420, 330], 0.12, 0.22);
+}
+
+/* ---------- gambar ---------- */
+function mobil(x, y, w, h, warna, hadapAtas){
+  ctx.fillStyle = 'rgba(0,0,0,.3)';
+  rrect(x - w / 2 + 3, y - h / 2 + 5, w, h, 12); ctx.fill();
+  ctx.fillStyle = warna;
+  rrect(x - w / 2, y - h / 2, w, h, 12); ctx.fill();
+  // kaca depan
+  ctx.fillStyle = 'rgba(255,255,255,.32)';
+  rrect(x - w * .32, y - h * (hadapAtas ? .30 : .06), w * .64, h * .22, 6); ctx.fill();
+  // kaca belakang
+  rrect(x - w * .30, y + h * (hadapAtas ? .12 : -.30), w * .60, h * .18, 6); ctx.fill();
+  // lampu
+  ctx.fillStyle = 'rgba(255,246,180,.9)';
+  rrect(x - w * .40, y - h / 2 + 5, w * .18, 7, 3); ctx.fill();
+  rrect(x + w * .22, y - h / 2 + 5, w * .18, 7, 3); ctx.fill();
+}
+function rrect(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function gambar(){
+  if (!st) return;
+  ctx.clearRect(0, 0, VW, VH);
+
+  // rumput
+  ctx.fillStyle = '#1f6b3a';
+  ctx.fillRect(0, 0, VW, VH);
+  // garis rumput bergerak (kiri & kanan)
+  ctx.fillStyle = 'rgba(255,255,255,.06)';
+  const gp = (st.t * st.laju * 0.5) % 60;
+  for (let y = -60 + gp; y < VH; y += 60){
+    ctx.fillRect(0, y, jalan.x, 26);
+    ctx.fillRect(jalan.x + jalan.w, y, VW - jalan.x - jalan.w, 26);
+  }
+
+  // aspal
+  ctx.fillStyle = '#3a3a44';
+  ctx.fillRect(jalan.x, 0, jalan.w, VH);
+  ctx.fillStyle = 'rgba(0,0,0,.25)';
+  ctx.fillRect(jalan.x, 0, 8, VH);
+  ctx.fillRect(jalan.x + jalan.w - 8, 0, 8, VH);
+
+  // marka jalan bergerak
+  ctx.strokeStyle = 'rgba(255,255,255,.5)';
+  ctx.lineWidth = 4;
+  ctx.setLineDash([26, 26]);
+  ctx.lineDashOffset = -(st.t * st.laju * 1.1) % 52;
+  for (let i = 1; i < JALUR; i++){
+    const x = jalan.x + jalan.lw * i;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, VH); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  ctx.save();
+  if (st.goyang > 0.3) ctx.translate((Math.random() - .5) * st.goyang, (Math.random() - .5) * st.goyang);
+
+  // koin
+  st.koin.forEach(k => {
+    const x = jalurX(k.jalur), y = k.y + Math.sin(st.t * 4 + k.fase) * 3;
+    const w = Math.abs(Math.cos(st.t * 3 + k.fase)) * 9 + 4;
+    ctx.fillStyle = '#b8801a';
+    ctx.beginPath(); ctx.ellipse(x, y, w + 2, 17, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath(); ctx.ellipse(x, y, w, 14, 0, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // musuh
+  st.musuh.forEach(m => mobil(jalurX(m.jalur), m.y, m.w, m.h, m.warna, false));
+
+  // pemain
+  if (!(st.kebal > 0 && Math.floor(st.t * 14) % 2)){
+    mobil(st.px, st.py, jalan.lw * 0.68, 92, '#3b82f6', true);
+  }
+
+  // poin melayang
+  st.poin.forEach(p => {
+    ctx.globalAlpha = Math.min(1, p.hidup * 2);
+    ctx.fillStyle = p.warna;
+    ctx.font = "800 20px 'Baloo 2', Nunito, sans-serif";
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(p.teks, p.x, p.y);
+    ctx.globalAlpha = 1;
+  });
+  ctx.restore();
+}
+
+/* ---------- kendali: ketuk = pindah satu jalur, geser = ikut jari ---------- */
+const pang = document.getElementById('panggung');
+let titik = null;
+pang.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (!st || !st.jalan) return;
+  titik = { x: e.clientX, y: e.clientY, geser: false };
+});
+pang.addEventListener('pointermove', e => {
+  if (!titik || !st || !st.jalan) return;
+  const dx = e.clientX - titik.x;
+  if (Math.abs(dx) > 45){
+    pindah(dx > 0 ? 1 : -1);
+    titik.x = e.clientX;
+    titik.geser = true;
+  }
+});
+window.addEventListener('pointerup', e => {
+  if (titik && !titik.geser && st && st.jalan){
+    const r = cv.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * VW;
+    pindah(x < VW / 2 ? -1 : 1);
+  }
+  titik = null;
+});
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a'){ e.preventDefault(); pindah(-1); }
+  if (e.key === 'ArrowRight' || e.key === 'd'){ e.preventDefault(); pindah(1); }
+});
+
+/* ---------- gelung ---------- */
+let last = 0;
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - last) / 1000) || 0;
+  last = now;
+  update(dt);
+  gambar();
+}
+
+/* ---------- suara ---------- */
+let ac = null;
+function bunyi(f, vol, dur){
+  try{
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t0 = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'triangle'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.14, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.16));
+    o.connect(g); g.connect(ac.destination);
+    o.start(t0); o.stop(t0 + (dur || 0.16) + 0.02);
+  }catch(e){}
+}
+function nada(freqs, jeda, vol){
+  freqs.forEach((f, i) => setTimeout(() => bunyi(f, vol, 0.24), i * jeda * 1000));
+}
+
+function restart(){ baru(); }
+
+ukuran();
+baru();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

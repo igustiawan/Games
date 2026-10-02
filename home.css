@@ -125,10 +125,15 @@ header{padding:34px 0 8px;text-align:center;position:relative}
 
 /* ---------------- bagian ---------------- */
 .sect{margin-top:30px}
+.sect + .sect{margin-top:40px}
 .sect-head{display:flex;align-items:center;gap:10px;margin:0 4px 14px}
 .sect-head h2{
   font-family:'Baloo 2','Nunito',sans-serif;
   font-size:clamp(1.1rem,3.6vw,1.5rem);font-weight:800;
+}
+.sect-head .jml{
+  font-size:.6em;font-weight:800;color:rgba(255,255,255,.42);
+  margin-left:6px;letter-spacing:0;white-space:nowrap;
 }
 .sect-head .line{flex:1;height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,.22),transparent)}
 

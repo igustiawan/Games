@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Cari Beda — Puzzle</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Nunito',system-ui,sans-serif;color:#fff;
+  background:radial-gradient(circle at 50% 0%,#0f766e,#0b3b3a 45%,#031414 100%);
+  background-attachment:fixed;min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:56px 12px 18px;overflow:hidden;
+}
+a.back{
+  position:fixed;top:12px;left:12px;z-index:20;text-decoration:none;
+  color:rgba(255,255,255,.8);font-weight:800;font-size:.82rem;
+  background:rgba(0,0,0,.34);padding:9px 15px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+}
+a.back:hover{color:#fff;background:rgba(0,0,0,.5)}
+
+h1{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:clamp(1.3rem,5.2vw,1.9rem);text-align:center}
+.sub{color:rgba(255,255,255,.6);font-weight:700;font-size:.82rem;margin-top:3px;text-align:center}
+
+.hud{display:flex;gap:10px;width:min(94vw,430px);margin:14px 0 10px}
+.pill{
+  flex:1;background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.14);
+  border-radius:14px;padding:7px 10px;text-align:center;
+}
+.pill .lab{font-size:.6rem;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.5);text-transform:uppercase}
+.pill .val{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.15rem;line-height:1.2;color:#5eead4}
+
+.panggung{
+  position:relative;width:min(94vw,430px);aspect-ratio:3/4;max-height:64vh;
+  border-radius:22px;overflow:hidden;
+  border:3px solid rgba(255,255,255,.14);
+  box-shadow:0 22px 55px rgba(0,0,0,.55);
+  background:#04201f;
+  touch-action:none;cursor:pointer;
+}
+canvas{display:block;width:100%;height:100%}
+
+.done{
+  position:fixed;inset:0;display:none;place-items:center;z-index:30;
+  background:rgba(2,16,16,.88);backdrop-filter:blur(7px);padding:20px;
+}
+.done.on{display:grid}
+.card{
+  background:linear-gradient(160deg,#115e59,#04201f);border:1px solid rgba(255,255,255,.16);
+  border-radius:26px;padding:28px 24px;text-align:center;max-width:350px;width:100%;
+  animation:pop .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.card .em{font-size:3.4rem;line-height:1}
+.card h2{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.5rem;margin-top:6px}
+.card .big{font-family:'Baloo 2',sans-serif;font-size:2.4rem;color:#5eead4;margin:6px 0 0}
+.card p{color:rgba(255,255,255,.72);font-weight:700;font-size:.92rem;line-height:1.5;margin-top:10px}
+.card button{
+  margin-top:16px;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.05rem;
+  padding:14px 34px;border-radius:999px;border:none;cursor:pointer;color:#04231c;
+  background:linear-gradient(180deg,#9dffc9,#3ddc97);border-bottom:5px solid #1a8a5c;width:100%;
+}
+.card button:active{transform:translateY(3px);border-bottom-width:2px}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms !important}}
+</style>
+</head>
+<body>
+<a class="back" href="../">← Dunia Kiya &amp; Zhian</a>
+
+<h1>🔍 Cari Beda</h1>
+<p class="sub">Dua gambar ini hampir sama. Temukan <b id="jml">5</b> perbedaannya!</p>
+
+<div class="hud">
+  <div class="pill"><div class="lab">Gambar</div><div class="val" id="vRonde">1 / 3</div></div>
+  <div class="pill"><div class="lab">Ketemu</div><div class="val" id="vKetemu">0 / 5</div></div>
+  <div class="pill"><div class="lab">Salah</div><div class="val" id="vSalah">0</div></div>
+</div>
+
+<div class="panggung" id="panggung"><canvas id="cv"></canvas></div>
+
+<div class="done" id="done">
+  <div class="card">
+    <div class="em" id="rEmoji">🎉</div>
+    <h2 id="rTitle">Semua Ketemu!</h2>
+    <div class="big" id="rBig"></div>
+    <p id="rMsg"></p>
+    <button id="rBtn" onclick="lanjut()">Lanjut →</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const el = id => document.getElementById(id);
+const TAU = Math.PI * 2;
+const SW = 300, SH = 180;            // ruang gambar satu panel
+
+let VW = 430, VH = 573;
+let st = null;
+
+/* ---------- cara menggambar tiap benda ---------- */
+const ITEM = {
+  matahari(c, it){
+    c.fillStyle = it.warna;
+    c.beginPath(); c.arc(it.x, it.y, it.s, 0, TAU); c.fill();
+    c.globalAlpha = .28;
+    c.beginPath(); c.arc(it.x, it.y, it.s * 1.55, 0, TAU); c.fill();
+    c.globalAlpha = 1;
+  },
+  awan(c, it){
+    c.fillStyle = it.warna;
+    const r = it.s;
+    c.beginPath();
+    c.arc(it.x, it.y, r, 0, TAU);
+    c.arc(it.x + r * .95, it.y + r * .18, r * .82, 0, TAU);
+    c.arc(it.x - r * .95, it.y + r * .22, r * .72, 0, TAU);
+    c.fill();
+  },
+  pohon(c, it){
+    c.fillStyle = '#7c4a21';
+    c.fillRect(it.x - it.s * .13, it.y, it.s * .26, it.s * .95);
+    c.fillStyle = it.warna;
+    c.beginPath(); c.arc(it.x, it.y, it.s * .78, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.22)';
+    c.beginPath(); c.arc(it.x - it.s * .26, it.y - it.s * .22, it.s * .34, 0, TAU); c.fill();
+  },
+  rumah(c, it){
+    const w = it.s * 1.7, h = it.s;
+    c.fillStyle = it.warna;
+    c.fillRect(it.x - w / 2, it.y - h / 2, w, h);
+    c.fillStyle = '#b45309';
+    c.beginPath();
+    c.moveTo(it.x - w * .62, it.y - h / 2);
+    c.lineTo(it.x, it.y - h * 1.15);
+    c.lineTo(it.x + w * .62, it.y - h / 2);
+    c.closePath(); c.fill();
+    c.fillStyle = '#7c4a21';
+    c.fillRect(it.x - w * .13, it.y - h * .06, w * .26, h * .56);
+    c.fillStyle = '#bae6fd';
+    c.fillRect(it.x + w * .20, it.y - h * .08, w * .24, h * .3);
+  },
+  bunga(c, it){
+    c.fillStyle = '#16a34a';
+    c.fillRect(it.x - 1.5, it.y, 3, it.s * 1.1);
+    c.fillStyle = it.warna;
+    for (let i = 0; i < 5; i++){
+      const a = -Math.PI / 2 + i * TAU / 5;
+      c.beginPath();
+      c.arc(it.x + Math.cos(a) * it.s * .42, it.y + Math.sin(a) * it.s * .42, it.s * .34, 0, TAU);
+      c.fill();
+    }
+    c.fillStyle = '#fde047';
+    c.beginPath(); c.arc(it.x, it.y, it.s * .24, 0, TAU); c.fill();
+  },
+  semak(c, it){
+    c.fillStyle = it.warna;
+    c.beginPath();
+    c.arc(it.x, it.y, it.s * .7, 0, TAU);
+    c.arc(it.x - it.s * .6, it.y + it.s * .12, it.s * .5, 0, TAU);
+    c.arc(it.x + it.s * .6, it.y + it.s * .12, it.s * .5, 0, TAU);
+    c.fill();
+  },
+  kupu(c, it){
+    c.fillStyle = it.warna;
+    c.beginPath(); c.ellipse(it.x - it.s * .38, it.y, it.s * .42, it.s * .55, -.4, 0, TAU); c.fill();
+    c.beginPath(); c.ellipse(it.x + it.s * .38, it.y, it.s * .42, it.s * .55, .4, 0, TAU); c.fill();
+    c.fillStyle = '#3f3f46';
+    c.beginPath(); c.ellipse(it.x, it.y, it.s * .1, it.s * .5, 0, 0, TAU); c.fill();
+  },
+  bintang(c, it){
+    c.fillStyle = it.warna;
+    c.beginPath();
+    for (let i = 0; i < 10; i++){
+      const a = -Math.PI / 2 + i * Math.PI / 5;
+      const r = i % 2 ? it.s * .45 : it.s;
+      c.lineTo(it.x + Math.cos(a) * r, it.y + Math.sin(a) * r);
+    }
+    c.closePath(); c.fill();
+  },
+  planet(c, it){
+    c.fillStyle = it.warna;
+    c.beginPath(); c.arc(it.x, it.y, it.s, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = Math.max(2, it.s * .14);
+    c.beginPath(); c.ellipse(it.x, it.y, it.s * 1.5, it.s * .42, -.3, 0, TAU); c.stroke();
+  },
+  roket(c, it){
+    c.fillStyle = '#e2e8f0';
+    c.beginPath();
+    c.moveTo(it.x, it.y - it.s * 1.1);
+    c.quadraticCurveTo(it.x + it.s * .58, it.y, it.x + it.s * .58, it.y + it.s * .6);
+    c.lineTo(it.x - it.s * .58, it.y + it.s * .6);
+    c.quadraticCurveTo(it.x - it.s * .58, it.y, it.x, it.y - it.s * 1.1);
+    c.closePath(); c.fill();
+    c.fillStyle = '#ef4444';
+    c.beginPath(); c.arc(it.x, it.y - it.s * .25, it.s * .26, 0, TAU); c.fill();
+    c.fillStyle = '#f59e0b';
+    c.beginPath();
+    c.moveTo(it.x - it.s * .3, it.y + it.s * .6);
+    c.lineTo(it.x, it.y + it.s * 1.35);
+    c.lineTo(it.x + it.s * .3, it.y + it.s * .6);
+    c.closePath(); c.fill();
+  },
+  perahu(c, it){
+    c.fillStyle = it.warna;
+    c.beginPath();
+    c.moveTo(it.x - it.s, it.y);
+    c.quadraticCurveTo(it.x, it.y + it.s * .7, it.x + it.s, it.y);
+    c.closePath(); c.fill();
+    c.fillStyle = '#e2e8f0';
+    c.beginPath();
+    c.moveTo(it.x, it.y - it.s * 1.1);
+    c.lineTo(it.x + it.s * .7, it.y - it.s * .1);
+    c.lineTo(it.x - it.s * .1, it.y - it.s * .1);
+    c.closePath(); c.fill();
+  },
+  batu(c, it){
+    c.fillStyle = it.warna;
+    c.beginPath();
+    c.moveTo(it.x - it.s, it.y + it.s * .6);
+    c.quadraticCurveTo(it.x - it.s * .7, it.y - it.s * .8, it.x, it.y - it.s * .75);
+    c.quadraticCurveTo(it.x + it.s * .8, it.y - it.s * .6, it.x + it.s, it.y + it.s * .6);
+    c.closePath(); c.fill();
+  },
+};
+
+const WARNA_MAIN = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6'];
+
+/* ---------- tiga gambar ---------- */
+const SCENE = [
+  { nama: 'Taman', latar: '#87ceeb', items: [
+    { j: 'matahari', x: 250, y: 34, s: 20, warna: '#fde047' },
+    { j: 'awan', x: 70, y: 32, s: 15, warna: '#ffffff' },
+    { j: 'awan', x: 175, y: 22, s: 11, warna: '#ffffff' },
+    { j: 'rumah', x: 62, y: 118, s: 26, warna: '#fca5a5' },
+    { j: 'pohon', x: 158, y: 110, s: 30, warna: '#22c55e' },
+    { j: 'pohon', x: 232, y: 118, s: 24, warna: '#16a34a' },
+    { j: 'semak', x: 118, y: 152, s: 16, warna: '#15803d' },
+    { j: 'bunga', x: 202, y: 148, s: 15, warna: '#ec4899' },
+    { j: 'bunga', x: 274, y: 156, s: 13, warna: '#f97316' },
+    { j: 'kupu', x: 132, y: 66, s: 13, warna: '#a855f7' },
+  ]},
+  { nama: 'Pantai', latar: '#7dd3fc', items: [
+    { j: 'matahari', x: 44, y: 30, s: 19, warna: '#fbbf24' },
+    { j: 'awan', x: 200, y: 28, s: 13, warna: '#ffffff' },
+    { j: 'perahu', x: 246, y: 96, s: 24, warna: '#dc2626' },
+    { j: 'batu', x: 78, y: 150, s: 17, warna: '#94a3b8' },
+    { j: 'batu', x: 262, y: 158, s: 13, warna: '#a8a29e' },
+    { j: 'bunga', x: 148, y: 152, s: 14, warna: '#f43f5e' },
+    { j: 'kupu', x: 186, y: 76, s: 12, warna: '#facc15' },
+    { j: 'semak', x: 118, y: 168, s: 14, warna: '#0d9488' },
+    { j: 'pohon', x: 30, y: 126, s: 26, warna: '#15803d' },
+  ]},
+  { nama: 'Angkasa', latar: '#1e1b4b', items: [
+    { j: 'planet', x: 74, y: 54, s: 24, warna: '#f97316' },
+    { j: 'planet', x: 236, y: 122, s: 19, warna: '#38bdf8' },
+    { j: 'roket', x: 158, y: 92, s: 26, warna: '#e2e8f0' },
+    { j: 'bintang', x: 40, y: 140, s: 11, warna: '#fde047' },
+    { j: 'bintang', x: 120, y: 34, s: 9, warna: '#fde047' },
+    { j: 'bintang', x: 216, y: 40, s: 12, warna: '#fde047' },
+    { j: 'bintang', x: 280, y: 74, s: 10, warna: '#fde047' },
+    { j: 'bintang', x: 274, y: 158, s: 9, warna: '#fde047' },
+    { j: 'bintang', x: 96, y: 158, s: 8, warna: '#fde047' },
+  ]},
+];
+
+/* ---------- tata letak dua panel ---------- */
+let tata = { px: 0, py: 0, pw: 0, ph: 0, gap: 0 };
+
+function ukuran(){
+  const box = document.getElementById('panggung').getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  VW = Math.max(200, Math.round(box.width));
+  VH = Math.max(260, Math.round(box.height));
+  cv.width = Math.round(VW * dpr);
+  cv.height = Math.round(VH * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  tataPapan();
+}
+window.addEventListener('resize', ukuran);
+
+function tataPapan(){
+  const pad = Math.min(VW, VH) * 0.035;
+  const gap = Math.min(VW, VH) * 0.035;
+  let pw = VW - pad * 2;
+  let ph = pw * SH / SW;
+  if (ph * 2 + gap > VH - pad * 2){
+    ph = (VH - pad * 2 - gap) / 2;
+    pw = ph * SW / SH;
+  }
+  const totalH = ph * 2 + gap;
+  tata = { px: (VW - pw) / 2, py: (VH - totalH) / 2, pw, ph, gap };
+}
+
+/* ---------- ronde ---------- */
+function acakIndeks(n, k){
+  const arr = [];
+  for (let i = 0; i < n; i++) arr.push(i);
+  arr.sort(() => Math.random() - 0.5);
+  return arr.slice(0, k);
+}
+function warnaLain(w){
+  const lain = WARNA_MAIN.filter(c => c !== w);
+  return lain[Math.floor(Math.random() * lain.length)];
+}
+
+function mulaiRonde(r){
+  const dasar = SCENE[r].items.map(it => Object.assign({}, it));
+  const jml = Math.min(6, 4 + r);
+  const pilih = acakIndeks(dasar.length, jml);
+  const versiB = dasar.map(it => Object.assign({}, it));
+  const beda = [];
+  pilih.forEach(i => {
+    const it = versiB[i];
+    const tipe = ['hilang', 'warna', 'ukuran', 'pindah'][Math.floor(Math.random() * 4)];
+    let tx = it.x, ty = it.y;
+    if (tipe === 'hilang') it.hilang = true;
+    else if (tipe === 'warna') it.warna = warnaLain(it.warna);
+    else if (tipe === 'ukuran') it.s = it.s * (Math.random() < 0.5 ? 1.55 : 0.6);
+    else {
+      it.x = Math.max(24, Math.min(SW - 24, it.x + (Math.random() < 0.5 ? -26 : 26)));
+      it.y = Math.max(20, Math.min(SH - 16, it.y + (Math.random() < 0.5 ? -14 : 14)));
+      tx = it.x; ty = it.y;
+    }
+    beda.push({ x: tx, y: ty, r: Math.max(22, it.s * 1.0), tipe, ketemu: false, fase: Math.random() * 6 });
+  });
+  st = { ronde: r, itemsA: dasar, itemsB: versiB, beda, ketemu: 0, salah: 0, t: 0, goyang: 0, selesai: false };
+  el('jml').textContent = jml;
+  el('vRonde').textContent = (r + 1) + ' / ' + SCENE.length;
+  el('vKetemu').textContent = '0 / ' + jml;
+  el('vSalah').textContent = '0';
+  el('done').classList.remove('on');
+}
+
+function menang(){
+  st.selesai = true;
+  nada([660, 880, 1100], 0.08, 0.2);
+  const terakhir = st.ronde >= SCENE.length - 1;
+  el('rEmoji').textContent = terakhir ? '🏆' : '🎉';
+  el('rTitle').textContent = terakhir ? 'Semua Gambar Selesai!' : 'Semua Ketemu!';
+  el('rBig').textContent = st.salah === 0 ? 'Tanpa salah!' : st.salah + ' kali salah';
+  el('rMsg').textContent = terakhir
+    ? 'Kamu menemukan semua perbedaan di ketiga gambar. Hebat!'
+    : 'Lanjut ke gambar berikutnya ya.';
+  el('rBtn').textContent = terakhir ? 'Main Lagi dari Awal 🔄' : 'Gambar Berikutnya →';
+  setTimeout(() => el('done').classList.add('on'), 460);
+}
+function lanjut(){
+  if (st.ronde >= SCENE.length - 1) mulaiRonde(0);
+  else mulaiRonde(st.ronde + 1);
+}
+
+/* ---------- gambar ---------- */
+function panel(x, y, w, h, items){
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  const adeg = SCENE[st.ronde];
+  ctx.fillStyle = adeg.latar;
+  ctx.fillRect(x, y, w, h);
+  ctx.translate(x, y);
+  ctx.scale(w / SW, h / SH);
+  items.forEach(it => {
+    if (it.hilang) return;
+    const f = ITEM[it.j];
+    if (f) f(ctx, it);
+  });
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255,255,255,.28)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(x, y, w, h, 12) : ctx.rect(x, y, w, h);
+  ctx.stroke();
+}
+
+function gambar(){
+  if (!st) return;
+  ctx.fillStyle = '#04201f';
+  ctx.fillRect(0, 0, VW, VH);
+
+  ctx.save();
+  if (st.goyang > 0.3) ctx.translate((Math.random() - .5) * st.goyang, (Math.random() - .5) * st.goyang);
+
+  const { px, py, pw, ph, gap } = tata;
+  panel(px, py, pw, ph, st.itemsA);
+  panel(px, py + ph + gap, pw, ph, st.itemsB);
+
+  // tanda untuk yang sudah ketemu, di kedua panel
+  st.beda.forEach(b => {
+    if (!b.ketemu) return;
+    const den = 1 + Math.sin(st.t * 4 + b.fase) * 0.06;
+    [py, py + ph + gap].forEach(top => {
+      const cx = px + b.x / SW * pw;
+      const cy = top + b.y / SH * ph;
+      const r = b.r / SW * pw * den;
+      ctx.strokeStyle = '#4ade80';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+      ctx.fillStyle = 'rgba(74,222,128,.22)';
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+    });
+  });
+  ctx.restore();
+}
+
+/* ---------- kendali ---------- */
+function cari(e){
+  e.preventDefault();
+  if (!st || st.selesai) return;
+  const r = cv.getBoundingClientRect();
+  const mx = (e.clientX - r.left) / r.width * VW;
+  const my = (e.clientY - r.top) / r.height * VH;
+  const { px, py, pw, ph, gap } = tata;
+  let atas = null;
+  if (my >= py && my <= py + ph) atas = py;
+  else if (my >= py + ph + gap && my <= py + 2 * ph + gap) atas = py + ph + gap;
+  if (atas === null) return;
+  if (mx < px || mx > px + pw) return;
+  const sx = (mx - px) / pw * SW;
+  const sy = (my - atas) / ph * SH;
+
+  let terdekat = null, jarak = 1e9;
+  st.beda.forEach(b => {
+    if (b.ketemu) return;
+    const d = Math.hypot(b.x - sx, b.y - sy);
+    if (d < b.r * 1.15 && d < jarak){ jarak = d; terdekat = b; }
+  });
+  if (terdekat){
+    terdekat.ketemu = true;
+    st.ketemu++;
+    el('vKetemu').textContent = st.ketemu + ' / ' + st.beda.length;
+    bunyi(760 + st.ketemu * 90, 0.16, 0.14);
+    if (st.ketemu === st.beda.length) menang();
+  } else {
+    st.salah++;
+    st.goyang = 10;
+    el('vSalah').textContent = st.salah;
+    bunyi(200, 0.1, 0.12);
+  }
+}
+const pang = document.getElementById('panggung');
+pang.addEventListener('pointerdown', cari);
+
+/* ---------- gelung ---------- */
+let last = 0;
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - last) / 1000) || 0;
+  last = now;
+  if (st){ st.t += dt; st.goyang *= 0.86; }
+  gambar();
+}
+
+/* ---------- suara ---------- */
+let ac = null;
+function bunyi(f, vol, dur){
+  try{
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t0 = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.14, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.16));
+    o.connect(g); g.connect(ac.destination);
+    o.start(t0); o.stop(t0 + (dur || 0.16) + 0.02);
+  }catch(e){}
+}
+function nada(freqs, jeda, vol){
+  freqs.forEach((f, i) => setTimeout(() => bunyi(f, vol, 0.22), i * jeda * 1000));
+}
+
+ukuran();
+mulaiRonde(0);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

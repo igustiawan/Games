@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mancing Ikan — Petualangan</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Nunito',system-ui,sans-serif;color:#fff;
+  background:radial-gradient(circle at 50% 0%,#1b6fa8,#0d3f66 45%,#04141f 100%);
+  background-attachment:fixed;min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:56px 12px 16px;overflow:hidden;
+}
+a.back{
+  position:fixed;top:12px;left:12px;z-index:20;text-decoration:none;
+  color:rgba(255,255,255,.8);font-weight:800;font-size:.82rem;
+  background:rgba(0,0,0,.34);padding:9px 15px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+}
+a.back:hover{color:#fff;background:rgba(0,0,0,.5)}
+
+.hud{display:flex;gap:10px;width:min(94vw,430px);margin-bottom:10px;align-items:center}
+.pill{
+  background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.14);
+  border-radius:14px;padding:7px 12px;text-align:center;min-width:76px;
+}
+.pill .lab{font-size:.6rem;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.5);text-transform:uppercase}
+.pill .val{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.1rem;line-height:1.2;color:#ffd166}
+.waktu{margin-left:auto;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.5rem}
+
+.panggung{
+  position:relative;width:min(94vw,430px);aspect-ratio:1/1.18;max-height:64vh;
+  border-radius:22px;overflow:hidden;
+  border:3px solid rgba(255,255,255,.14);
+  box-shadow:0 22px 55px rgba(0,0,0,.55);
+  touch-action:none;cursor:pointer;
+}
+canvas{display:block;width:100%;height:100%}
+
+.petunjuk{
+  position:absolute;left:0;right:0;bottom:14px;text-align:center;
+  font-family:'Baloo 2',sans-serif;font-weight:800;font-size:.95rem;
+  color:rgba(255,255,255,.9);text-shadow:0 3px 10px rgba(0,0,0,.8);
+  pointer-events:none;transition:opacity .4s;
+}
+.petunjuk.hilang{opacity:0}
+
+.done{
+  position:fixed;inset:0;display:none;place-items:center;z-index:30;
+  background:rgba(2,12,20,.88);backdrop-filter:blur(7px);padding:20px;
+}
+.done.on{display:grid}
+.card{
+  background:linear-gradient(160deg,#0f4468,#062033);border:1px solid rgba(255,255,255,.16);
+  border-radius:26px;padding:28px 24px;text-align:center;max-width:350px;width:100%;
+  animation:pop .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.card .em{font-size:3.4rem;line-height:1}
+.card h2{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.5rem;margin-top:6px}
+.card .lbl{font-size:.72rem;font-weight:800;letter-spacing:.12em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-top:10px}
+.card .big{font-family:'Baloo 2',sans-serif;font-size:2.8rem;color:#7dd3fc;line-height:1}
+.card p{color:rgba(255,255,255,.72);font-weight:700;font-size:.9rem;line-height:1.5;margin-top:10px}
+.card .rekor{color:rgba(255,255,255,.55);font-weight:800;font-size:.84rem;margin-top:6px}
+.card button{
+  margin-top:16px;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.05rem;
+  padding:14px 34px;border-radius:999px;border:none;cursor:pointer;color:#04231c;
+  background:linear-gradient(180deg,#9dffc9,#3ddc97);border-bottom:5px solid #1a8a5c;width:100%;
+}
+.card button:active{transform:translateY(3px);border-bottom-width:2px}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms !important}}
+</style>
+</head>
+<body>
+<a class="back" href="../">← Dunia Kiya &amp; Zhian</a>
+
+<div class="hud">
+  <div class="pill"><div class="lab">Skor</div><div class="val" id="vSkor">0</div></div>
+  <div class="pill"><div class="lab">Ikan</div><div class="val" id="vIkan">0</div></div>
+  <div class="waktu" id="vWaktu">60</div>
+</div>
+
+<div class="panggung" id="panggung">
+  <canvas id="cv"></canvas>
+  <div class="petunjuk" id="petunjuk">👆 Tahan untuk menurunkan kail, lepas untuk menarik</div>
+</div>
+
+<div class="done" id="done">
+  <div class="card">
+    <div class="em" id="rEmoji">🎣</div>
+    <h2 id="rTitle">Waktu Habis!</h2>
+    <div class="lbl">Skor kamu</div>
+    <div class="big" id="rSkor">0</div>
+    <div class="rekor" id="rIkan"></div>
+    <div class="rekor" id="rBest"></div>
+    <p id="rMsg"></p>
+    <button onclick="restart()">Main Lagi!</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const TAU = Math.PI * 2;
+const DURASI = 60;
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const el = id => document.getElementById(id);
+
+let VW = 430, VH = 507;
+let st = null;
+
+function ukuran(){
+  const box = document.getElementById('panggung').getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  VW = Math.max(200, Math.round(box.width));
+  VH = Math.max(240, Math.round(box.height));
+  cv.width = Math.round(VW * dpr);
+  cv.height = Math.round(VH * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', ukuran);
+
+const JENIS = [
+  { r: 13, warna: '#7dd3fc', poin: 1, laju: 46, nama: 'ikan kecil' },
+  { r: 17, warna: '#a5b4fc', poin: 2, laju: 38, nama: 'ikan sedang' },
+  { r: 22, warna: '#f9a8d4', poin: 3, laju: 30, nama: 'ikan besar' },
+  { r: 12, warna: '#ffd166', poin: 5, laju: 72, nama: 'ikan emas' },
+];
+const SAMPAH = [
+  { r: 15, warna: '#8b5e3c', ikon: '👟' },
+  { r: 13, warna: '#94a3b8', ikon: '🥫' },
+  { r: 14, warna: '#a3a3a3', ikon: '🪣' },
+];
+
+function baru(){
+  st = {
+    t: 0, waktu: DURASI, jalan: true,
+    kailY: 0, kailVy: 0, tahan: false,
+    ikan: [], sampah: [], poin: [], riak: [],
+    skor: 0, tangkap: 0,
+    spawn: 0.4, spawnSampah: 2.2,
+    goyang: 0, emas: false,
+    best: +(localStorage.getItem('mancing.rekor') || 0),
+  };
+  st.kailY = permukaan() + 20;
+  el('done').classList.remove('on');
+  el('vSkor').textContent = '0';
+  el('vIkan').textContent = '0';
+  el('vWaktu').textContent = DURASI;
+  const p = el('petunjuk');
+  p.classList.remove('hilang');
+  setTimeout(() => p.classList.add('hilang'), 3200);
+}
+
+function permukaan(){ return VH * 0.30; }
+function perahuX(){ return VW * 0.5; }
+
+function munculIkan(){
+  const j = JENIS[Math.floor(Math.random() * JENIS.length)];
+  const dariKiri = Math.random() < 0.5;
+  const y = permukaan() + 34 + Math.random() * (VH - permukaan() - 70);
+  st.ikan.push({
+    x: dariKiri ? -30 : VW + 30,
+    y, arah: dariKiri ? 1 : -1,
+    vx: (dariKiri ? 1 : -1) * j.laju * (0.8 + Math.random() * 0.5),
+    r: j.r, warna: j.warna, poin: j.poin, nama: j.nama,
+    fase: Math.random() * 6,
+  });
+}
+function munculSampah(){
+  const s = SAMPAH[Math.floor(Math.random() * SAMPAH.length)];
+  const dariKiri = Math.random() < 0.5;
+  st.sampah.push({
+    x: dariKiri ? -30 : VW + 30,
+    y: permukaan() + 30 + Math.random() * (VH - permukaan() - 60),
+    arah: dariKiri ? 1 : -1,
+    vx: (dariKiri ? 1 : -1) * 26,
+    r: s.r, warna: s.warna, ikon: s.ikon,
+  });
+}
+
+function update(dt){
+  if (!st) return;
+  st.t += dt;
+  st.goyang *= 0.9;
+  for (let i = st.riak.length - 1; i >= 0; i--){
+    st.riak[i].r += dt * 60;
+    st.riak[i].hidup -= dt;
+    if (st.riak[i].hidup <= 0) st.riak.splice(i, 1);
+  }
+  for (let i = st.poin.length - 1; i >= 0; i--){
+    st.poin[i].y -= dt * 40;
+    st.poin[i].hidup -= dt;
+    if (st.poin[i].hidup <= 0) st.poin.splice(i, 1);
+  }
+
+  if (!st.jalan) return;
+  st.waktu -= dt;
+  if (st.waktu <= 0){ st.waktu = 0; selesai(); }
+  el('vWaktu').textContent = Math.ceil(st.waktu);
+
+  // kail naik / turun (menarik ke atas lebih kuat daripada menurunkan)
+  const dasar = permukaan() + 18;
+  const batas = VH - 24;
+  st.kailVy += (st.tahan ? 1300 : -2600) * dt;
+  st.kailVy = Math.max(-700, Math.min(560, st.kailVy));
+  st.kailY += st.kailVy * dt;
+  if (st.kailY < dasar){ st.kailY = dasar; st.kailVy = 0; }
+  if (st.kailY > batas){ st.kailY = batas; st.kailVy = 0; }
+
+  // munculkan ikan & sampah
+  st.spawn -= dt;
+  if (st.spawn <= 0){ st.spawn = 0.45 + Math.random() * 0.5; munculIkan(); }
+  st.spawnSampah -= dt;
+  if (st.spawnSampah <= 0){ st.spawnSampah = 2 + Math.random() * 2.5; munculSampah(); }
+
+  // gerakkan
+  st.ikan.forEach(f => { f.x += f.vx * dt; f.y += Math.sin(st.t * 2 + f.fase) * 8 * dt; });
+  st.sampah.forEach(s => { s.x += s.vx * dt; });
+  st.ikan = st.ikan.filter(f => f.x > -60 && f.x < VW + 60);
+  st.sampah = st.sampah.filter(s => s.x > -60 && s.x < VW + 60);
+
+  // tangkap ikan
+  const kx = kailX(), ky = st.kailY;
+  for (let i = st.ikan.length - 1; i >= 0; i--){
+    const f = st.ikan[i];
+    if (Math.hypot(f.x - kx, f.y - ky) < f.r + 13){
+      st.ikan.splice(i, 1);
+      st.skor += f.poin;
+      st.tangkap++;
+      el('vSkor').textContent = st.skor;
+      el('vIkan').textContent = st.tangkap;
+      teks(kx, ky, '+' + f.poin, f.warna);
+      riak(kx, ky, f.warna);
+      if (f.poin === 5) nada([880, 1320, 1760], 0.06, 0.18);
+      else nada([520 + f.poin * 90], 0.07, 0.16);
+    }
+  }
+  // kena sampah
+  for (let i = st.sampah.length - 1; i >= 0; i--){
+    const s = st.sampah[i];
+    if (Math.hypot(s.x - kx, s.y - ky) < s.r + 13){
+      st.sampah.splice(i, 1);
+      teks(kx, ky, 'Sepatu! 😅', '#cbd5e1');
+      riak(kx, ky, '#94a3b8');
+      nada([200, 160], 0.09, 0.14);
+    }
+  }
+}
+
+function kailX(){
+  // kail sedikit bergoyang mengikuti ombak
+  return perahuX() + Math.sin(st.t * 1.1) * 6;
+}
+function teks(x, y, s, c){ st.poin.push({ x, y, s, c, hidup: 1 }); }
+function riak(x, y, c){ st.riak.push({ x, y, r: 6, hidup: 0.6, c }); }
+
+function selesai(){
+  st.jalan = false;
+  const rekorBaru = st.skor > st.best;
+  if (rekorBaru){ st.best = st.skor; try{ localStorage.setItem('mancing.rekor', st.skor); }catch(e){} }
+  el('rSkor').textContent = st.skor;
+  el('rIkan').textContent = 'Ikan tertangkap: ' + st.tangkap;
+  el('rBest').textContent = 'Rekor skor: ' + st.best;
+  el('rEmoji').textContent = rekorBaru ? '🏆' : '🎣';
+  el('rTitle').textContent = rekorBaru ? 'Rekor Baru!' : 'Waktu Habis!';
+  el('rMsg').textContent = st.skor > 30 ? 'Kamu pemancing hebat!' : 'Coba kejar ikan emas, nilainya 5 lho!';
+  setTimeout(() => el('done').classList.add('on'), 460);
+  nada([660, 520, 400], 0.12, 0.2);
+}
+
+/* ---------- gambar ---------- */
+function gambar(){
+  if (!st) return;
+  ctx.clearRect(0, 0, VW, VH);
+
+  // langit
+  const ls = ctx.createLinearGradient(0, 0, 0, permukaan());
+  ls.addColorStop(0, '#7dd3fc'); ls.addColorStop(1, '#e0f2fe');
+  ctx.fillStyle = ls;
+  ctx.fillRect(0, 0, VW, permukaan());
+
+  // matahari
+  ctx.fillStyle = 'rgba(255,236,160,.95)';
+  ctx.beginPath(); ctx.arc(VW * 0.80, VH * 0.09, VH * 0.055, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(255,236,160,.28)';
+  ctx.beginPath(); ctx.arc(VW * 0.80, VH * 0.09, VH * 0.10, 0, TAU); ctx.fill();
+
+  // awan
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  for (let i = 0; i < 3; i++){
+    const x = ((i * 190 + st.t * 12) % (VW + 140)) - 70;
+    const y = VH * (0.05 + i * 0.045);
+    ctx.beginPath();
+    ctx.arc(x, y, 16, 0, TAU);
+    ctx.arc(x + 20, y + 4, 21, 0, TAU);
+    ctx.arc(x + 44, y, 15, 0, TAU);
+    ctx.fill();
+  }
+
+  // air
+  const wa = ctx.createLinearGradient(0, permukaan(), 0, VH);
+  wa.addColorStop(0, '#0ea5e9'); wa.addColorStop(0.5, '#0369a1'); wa.addColorStop(1, '#062f4d');
+  ctx.fillStyle = wa;
+  ctx.fillRect(0, permukaan(), VW, VH - permukaan());
+
+  // sinar cahaya di air
+  ctx.save();
+  ctx.globalAlpha = 0.10;
+  ctx.fillStyle = '#e0f2fe';
+  for (let i = 0; i < 4; i++){
+    const x = VW * (0.15 + i * 0.24) + Math.sin(st.t * 0.5 + i) * 10;
+    ctx.beginPath();
+    ctx.moveTo(x - 12, permukaan()); ctx.lineTo(x + 12, permukaan());
+    ctx.lineTo(x + 40, VH); ctx.lineTo(x - 10, VH);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+
+  // ombak permukaan
+  ctx.strokeStyle = 'rgba(255,255,255,.5)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let x = 0; x <= VW; x += 8){
+    const y = permukaan() + Math.sin(x * 0.045 + st.t * 2) * 4;
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // ikan
+  st.ikan.forEach(f => gambarIkan(f.x, f.y, f.r, f.warna, f.arah, st.t + f.fase));
+
+  // sampah
+  st.sampah.forEach(s => {
+    ctx.save();
+    ctx.translate(s.x, s.y + Math.sin(st.t * 2 + s.x * 0.05) * 3);
+    ctx.rotate(Math.sin(st.t * 1.4 + s.x * 0.03) * 0.2);
+    ctx.font = `${Math.round(s.r * 2.2)}px serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(s.ikon, 0, 0);
+    ctx.restore();
+  });
+
+  // kail & tali
+  const bx = perahuX(), by = permukaan() - 4;
+  const kx = kailX(), ky = st.kailY;
+  ctx.strokeStyle = 'rgba(255,255,255,.75)';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(bx + 34, by - 44);
+  ctx.quadraticCurveTo(bx + 40, (by + ky) / 2, kx, ky);
+  ctx.stroke();
+  // kail
+  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(kx, ky);
+  ctx.lineTo(kx, ky + 9);
+  ctx.arc(kx + 5, ky + 9, 5, Math.PI, 0);
+  ctx.stroke();
+  // umpan
+  ctx.fillStyle = '#fb7185';
+  ctx.beginPath(); ctx.arc(kx, ky - 3, 5, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // perahu
+  const bp = Math.sin(st.t * 1.6) * 3;
+  ctx.save();
+  ctx.translate(bx, by + bp);
+  // badan perahu
+  ctx.fillStyle = '#8b5e3c';
+  ctx.beginPath();
+  ctx.moveTo(-52, 0);
+  ctx.quadraticCurveTo(0, 30, 52, 0);
+  ctx.lineTo(44, -14);
+  ctx.lineTo(-44, -14);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#a9744a';
+  ctx.beginPath();
+  ctx.moveTo(-44, -14); ctx.lineTo(44, -14); ctx.lineTo(40, -4); ctx.lineTo(-40, -4);
+  ctx.closePath(); ctx.fill();
+  // tiang & orang
+  ctx.strokeStyle = '#6b4423'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(34, -14); ctx.lineTo(38, -52); ctx.stroke();
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath(); ctx.arc(6, -34, 12, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#fde68a';
+  ctx.beginPath(); ctx.arc(6, -36, 9, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#1e293b';
+  ctx.beginPath(); ctx.arc(9, -37, 1.8, 0, TAU); ctx.arc(3, -37, 1.8, 0, TAU); ctx.fill();
+  ctx.restore();
+
+  // riak
+  st.riak.forEach(r => {
+    ctx.globalAlpha = Math.max(0, r.hidup / 0.6) * 0.7;
+    ctx.strokeStyle = r.c; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, TAU); ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+
+  // teks melayang
+  st.poin.forEach(p => {
+    ctx.globalAlpha = Math.min(1, p.hidup * 1.6);
+    ctx.font = "800 19px 'Baloo 2', Nunito, sans-serif";
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 4;
+    ctx.strokeText(p.s, p.x, p.y);
+    ctx.fillStyle = p.c;
+    ctx.fillText(p.s, p.x, p.y);
+    ctx.globalAlpha = 1;
+  });
+}
+
+function gambarIkan(x, y, r, warna, arah, t){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(arah, 1);
+  // ekor
+  ctx.fillStyle = warna;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.85, 0);
+  ctx.lineTo(-r * 1.65, -r * 0.66);
+  ctx.lineTo(-r * 1.65, r * 0.66);
+  ctx.closePath(); ctx.fill();
+  // sirip atas
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.15, -r * 0.60);
+  ctx.lineTo(r * 0.22, -r * 1.06);
+  ctx.lineTo(r * 0.42, -r * 0.48);
+  ctx.closePath(); ctx.fill();
+  // sirip bawah
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.05, r * 0.58);
+  ctx.lineTo(r * 0.18, r * 0.98);
+  ctx.lineTo(r * 0.38, r * 0.46);
+  ctx.closePath(); ctx.fill();
+  // badan
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 1.06, r * 0.68, 0, 0, TAU); ctx.fill();
+  // kilau
+  ctx.fillStyle = 'rgba(255,255,255,.30)';
+  ctx.beginPath(); ctx.ellipse(-r * 0.18, -r * 0.26, r * 0.52, r * 0.17, -0.1, 0, TAU); ctx.fill();
+  // mata
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(r * 0.52, -r * 0.12, r * 0.21, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath(); ctx.arc(r * 0.57, -r * 0.12, r * 0.11, 0, TAU); ctx.fill();
+  // mulut
+  ctx.strokeStyle = 'rgba(15,23,42,.55)'; ctx.lineWidth = Math.max(1.2, r * 0.10);
+  ctx.beginPath();
+  ctx.arc(r * 0.88, r * 0.10, r * 0.16, -0.9, 0.9);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ---------- kendali ---------- */
+const pang = document.getElementById('panggung');
+function turun(e){ e.preventDefault(); if (st && st.jalan) st.tahan = true; }
+function naik(){ if (st) st.tahan = false; }
+pang.addEventListener('pointerdown', turun);
+window.addEventListener('pointerup', naik);
+window.addEventListener('pointercancel', naik);
+window.addEventListener('keydown', e => { if (e.key === ' ' && st && st.jalan){ e.preventDefault(); st.tahan = true; } });
+window.addEventListener('keyup', e => { if (e.key === ' ') st.tahan = false; });
+
+/* ---------- gelung ---------- */
+let last = 0;
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - last) / 1000) || 0;
+  last = now;
+  update(dt);
+  gambar();
+}
+
+/* ---------- suara ---------- */
+let ac = null;
+function bunyi(f, vol, dur){
+  try{
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t0 = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.16, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.18));
+    o.connect(g); g.connect(ac.destination);
+    o.start(t0); o.stop(t0 + (dur || 0.18) + 0.02);
+  }catch(e){}
+}
+function nada(freqs, jeda, vol){
+  freqs.forEach((f, i) => setTimeout(() => bunyi(f, vol, 0.22), i * jeda * 1000));
+}
+
+function restart(){ baru(); }
+
+ukuran();
+baru();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

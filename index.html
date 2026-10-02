@@ -29,11 +29,7 @@
       <button class="big-btn" id="surprise">🎲 Kejutan!</button>
     </div>
 
-    <nav class="filters" id="filters">
-      <button class="chip on" data-f="semua">🌈 Semua <span class="n">16</span></button>
-      <button class="chip" data-f="main">🎮 Game Seru <span class="n">9</span></button>
-      <button class="chip" data-f="belajar">📚 Belajar TK <span class="n">7</span></button>
-    </nav>
+    <nav class="filters" id="filters"><!-- chip kelompok diisi oleh home.js --></nav>
   </header>
 
   <section class="sect hide" id="recent">
@@ -44,18 +40,12 @@
     <div class="grid" id="recent-grid"></div>
   </section>
 
-  <section class="sect">
-    <div class="sect-head">
-      <h2>🎮 Pilih Game</h2>
-      <div class="line"></div>
-    </div>
-    <div class="grid" id="grid"></div>
+  <div id="sections"><!-- bagian per kelompok diisi oleh home.js --></div>
 
-    <div class="empty hide" id="empty">
-      <span class="em">🙈</span>
-      Belum ada game di bagian ini.
-    </div>
-  </section>
+  <div class="empty hide" id="empty">
+    <span class="em">🙈</span>
+    Belum ada game di bagian ini.
+  </div>
 
   <footer>
     Dibuat untuk Kiya &amp; Zhian 💛
@@ -67,19 +57,29 @@
   <div class="wrap">
     <h2 style="margin:20px 0 10px">Daftar Game</h2>
     <ul style="line-height:2;padding-left:22px">
-      <li><a href="pahlawan-nusantara/" style="color:#ffd166">Pahlawan Nusantara</a></li>
-      <li><a href="susun-menara/" style="color:#ffd166">Susun Menara</a></li>
-      <li><a href="gelembung/" style="color:#ffd166">Tembak Gelembung</a></li>
-      <li><a href="snake-game/" style="color:#ffd166">Snake Arena</a></li>
-      <li><a href="war-race/" style="color:#ffd166">Zombie Survival</a></li>
+      <li><b>🧭 Petualangan</b></li>
+      <li><a href="labirin/" style="color:#ffd166">Labirin Harta</a></li>
+      <li><a href="balap/" style="color:#ffd166">Balap Mobil</a></li>
+      <li><a href="mancing/" style="color:#ffd166">Mancing Ikan</a></li>
       <li><a href="dino-run/" style="color:#ffd166">Dino Run</a></li>
+      <li><a href="hole-io/" style="color:#ffd166">Hole.io</a></li>
+      <li><b>⚔️ Aksi</b></li>
+      <li><a href="pahlawan-nusantara/" style="color:#ffd166">Pahlawan Nusantara</a></li>
+      <li><a href="war-race/" style="color:#ffd166">Zombie Survival</a></li>
+      <li><a href="snake-game/" style="color:#ffd166">Snake Arena</a></li>
+      <li><a href="gelembung/" style="color:#ffd166">Tembak Gelembung</a></li>
+      <li><b>🧩 Puzzle</b></li>
+      <li><a href="pipa/" style="color:#ffd166">Sambung Pipa</a></li>
+      <li><a href="puzzle-geser/" style="color:#ffd166">Puzzle Geser</a></li>
+      <li><a href="cari-beda/" style="color:#ffd166">Cari Beda</a></li>
       <li><a href="tetris/" style="color:#ffd166">Neon Tetris</a></li>
       <li><a href="suika/" style="color:#ffd166">Suika Fruit</a></li>
-      <li><a href="hole-io/" style="color:#ffd166">Hole.io</a></li>
+      <li><a href="susun-menara/" style="color:#ffd166">Susun Menara</a></li>
+      <li><b>📚 Belajar TK</b></li>
+      <li><a href="mewarnai/" style="color:#ffd166">Mewarnai Gambar</a></li>
+      <li><a href="belajar-pasangan/" style="color:#ffd166">Cari Pasangan</a></li>
       <li><a href="belajar-pola/" style="color:#ffd166">Pola Warna</a></li>
       <li><a href="belajar-bentuk/" style="color:#ffd166">Tebak Bentuk</a></li>
-      <li><a href="belajar-pasangan/" style="color:#ffd166">Cari Pasangan</a></li>
-      <li><a href="mewarnai/" style="color:#ffd166">Mewarnai Gambar</a></li>
       <li><a href="belajar-huruf/" style="color:#ffd166">Isi Huruf</a></li>
       <li><a href="belajar-angka/" style="color:#ffd166">Hitung Angka</a></li>
       <li><a href="belajar-warna/" style="color:#ffd166">Tebak Warna</a></li>
