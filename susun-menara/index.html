@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Susun Menara — Game Seru</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Nunito',system-ui,sans-serif;color:#fff;
+  background:radial-gradient(circle at 50% 0%,#1b2f6b,#0d1740 45%,#050818 100%);
+  background-attachment:fixed;min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:58px 14px 18px;overflow:hidden;
+}
+a.back{
+  position:fixed;top:12px;left:12px;z-index:20;text-decoration:none;
+  color:rgba(255,255,255,.8);font-weight:800;font-size:.82rem;
+  background:rgba(0,0,0,.34);padding:9px 15px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+}
+a.back:hover{color:#fff;background:rgba(0,0,0,.5)}
+
+.panggung{
+  position:relative;width:min(94vw,400px);aspect-ratio:400/620;
+  border-radius:24px;overflow:hidden;
+  border:3px solid rgba(255,255,255,.14);
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+  touch-action:none;cursor:pointer;
+}
+canvas{display:block;width:100%;height:100%}
+
+.petunjuk{
+  position:absolute;left:0;right:0;bottom:16px;text-align:center;
+  font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1rem;
+  color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.7);
+  pointer-events:none;transition:opacity .3s;
+}
+.petunjuk.hilang{opacity:0}
+
+.done{
+  position:fixed;inset:0;display:none;place-items:center;z-index:30;
+  background:rgba(3,6,20,.88);backdrop-filter:blur(7px);padding:20px;
+}
+.done.on{display:grid}
+.card{
+  background:linear-gradient(160deg,#233a7a,#0e1838);border:1px solid rgba(255,255,255,.16);
+  border-radius:26px;padding:30px 26px;text-align:center;max-width:360px;width:100%;
+  animation:pop .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.card .em{font-size:3.6rem;line-height:1}
+.card h2{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.6rem;margin-top:6px}
+.card .big{font-family:'Baloo 2',sans-serif;font-size:3rem;color:#ffd166;margin:6px 0 0}
+.card .lbl{font-size:.78rem;font-weight:800;letter-spacing:.12em;color:rgba(255,255,255,.5);text-transform:uppercase}
+.card p{color:rgba(255,255,255,.7);font-weight:700;font-size:.92rem;line-height:1.5;margin-top:10px}
+.card button{
+  margin-top:18px;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.05rem;
+  padding:14px 34px;border-radius:999px;border:none;cursor:pointer;color:#3a2405;
+  background:linear-gradient(180deg,#ffe08a,#ffc23c);border-bottom:5px solid #b8801a;width:100%;
+}
+.card button:active{transform:translateY(3px);border-bottom-width:2px}
+.rekor{color:rgba(255,255,255,.55);font-weight:800;font-size:.85rem;margin-top:8px}
+
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms !important}}
+</style>
+</head>
+<body>
+<a class="back" href="../">← Dunia Kiya &amp; Zhian</a>
+
+<div class="panggung" id="panggung">
+  <canvas id="cv" width="400" height="620"></canvas>
+  <div class="petunjuk" id="petunjuk">👆 Sentuh untuk menjatuhkan balok</div>
+</div>
+
+<div class="done" id="done">
+  <div class="card">
+    <div class="em" id="rEmoji">🏗️</div>
+    <h2 id="rTitle">Menara Runtuh!</h2>
+    <div class="lbl">Tinggi menara</div>
+    <div class="big" id="rBig">0</div>
+    <div class="rekor" id="rBest"></div>
+    <p id="rMsg"></p>
+    <button onclick="restart()">Main Lagi!</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const W = 400, H = 620;
+const BLOCK_H = 34;
+const PERFECT = 6;                 // toleransi "pas sekali"
+const PALET = ['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#38d9a9','#4dabf7','#9775fa','#f783ac'];
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const el = id => document.getElementById(id);
+
+let st = null;
+
+function baru(){
+  st = {
+    blocks: [{ x: W / 2, w: 190 }],
+    cur: null, cam: 0, falling: [], over: false,
+    t: 0, phase: 0, combo: 0, skor: 0,
+    best: +(localStorage.getItem('menara.rekor') || 0),
+    kilat: 0, goyang: 0, teks: [],
+  };
+  el('done').classList.remove('on');
+  el('petunjuk').classList.remove('hilang');
+  const top = st.blocks[0];
+  st.cur = { x: W / 2, w: top.w };
+  el('petunjuk').style.opacity = 1;
+}
+
+/* tinggi layar tempat balok dasar berada */
+const dasarY = H - 90;
+
+function yDari(level){ return dasarY - level * BLOCK_H + st.cam; }
+
+function update(dt){
+  if (st.over) return;
+  st.t += dt;
+  st.phase += dt * (2.0 + st.blocks.length * 0.10);   // makin tinggi makin cepat
+  st.kilat = Math.max(0, st.kilat - dt * 3);
+  st.goyang *= 0.88;
+
+  // balok bergerak kiri-kanan
+  const amp = 140;
+  st.cur.x = W / 2 + Math.sin(st.phase) * amp;
+
+  // kamera mengikuti puncak menara
+  const level = st.blocks.length;
+  const target = H * 0.42 - dasarY + level * BLOCK_H;
+  st.cam += (Math.max(0, target) - st.cam) * Math.min(1, dt * 5);
+
+  // potongan yang jatuh
+  for (let i = st.falling.length - 1; i >= 0; i--){
+    const f = st.falling[i];
+    f.vy += 1400 * dt;
+    f.y += f.vy * dt;
+    f.x += f.vx * dt;
+    f.rot += f.vr * dt;
+    if (f.y > H + 120) st.falling.splice(i, 1);
+  }
+  for (let i = st.teks.length - 1; i >= 0; i--){
+    st.teks[i].t -= dt;
+    st.teks[i].y -= dt * 34;
+    if (st.teks[i].t <= 0) st.teks.splice(i, 1);
+  }
+}
+
+function jatuhkan(){
+  if (st.over) return;
+  const prev = st.blocks[st.blocks.length - 1];
+  const cur = st.cur;
+  const kiri = Math.max(prev.x - prev.w / 2, cur.x - cur.w / 2);
+  const kanan = Math.min(prev.x + prev.w / 2, cur.x + cur.w / 2);
+  const tumpang = kanan - kiri;
+
+  if (tumpang <= 6){ runtuh(); return; }
+
+  const beda = Math.abs(cur.x - prev.x);
+  let nx, nw;
+  if (beda < PERFECT){
+    nx = prev.x; nw = prev.w;
+    st.combo++;
+    st.kilat = 1;
+    st.teks.push({ x: nx, y: yDari(st.blocks.length) - 14, t: 1, s: 'PAS!', c: '#ffd166' });
+    nada([880, 1320], 0.07);
+  } else {
+    nx = (kiri + kanan) / 2;
+    nw = tumpang;
+    st.combo = 0;
+    // potongan yang terpotong jatuh
+    const sisa = cur.w - nw;
+    if (sisa > 2){
+      const arah = cur.x < prev.x ? -1 : 1;
+      st.falling.push({
+        x: nx + arah * (nw / 2 + sisa / 2),
+        y: yDari(st.blocks.length),
+        w: sisa, vy: -120, vx: arah * 90,
+        rot: 0, vr: arah * 3, warna: warnaBalok(st.blocks.length),
+      });
+    }
+    nada([420], 0.05);
+  }
+
+  st.blocks.push({ x: nx, w: nw });
+  st.skor = st.blocks.length - 1;
+
+  // siapkan balok berikutnya
+  const atas = st.blocks[st.blocks.length - 1];
+  st.cur = { x: W / 2, w: atas.w };
+  st.phase = 0;
+}
+
+function runtuh(){
+  st.over = true;
+  st.goyang = 14;
+  nada([300, 220, 160], 0.12);
+  const skor = st.blocks.length - 1;
+  const rekorBaru = skor > st.best;
+  if (rekorBaru){ st.best = skor; try{ localStorage.setItem('menara.rekor', skor); }catch(e){} }
+  el('rBig').textContent = skor;
+  el('rEmoji').textContent = rekorBaru ? '🏆' : '🏗️';
+  el('rTitle').textContent = rekorBaru ? 'Rekor Baru!' : 'Menara Runtuh!';
+  el('rBest').textContent = 'Rekor terbaik: ' + st.best;
+  el('rMsg').textContent = skor >= 20 ? 'Menara kamu tinggi sekali!' :
+    skor >= 10 ? 'Bagus! Coba lebih tinggi lagi ya.' : 'Ayo coba lagi, pasti bisa lebih tinggi!';
+  setTimeout(() => el('done').classList.add('on'), 520);
+}
+
+function warnaBalok(i){ return PALET[i % PALET.length]; }
+
+function sudut(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function gambar(){
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // langit bergradasi, warnanya berubah makin tinggi
+  const tinggi = st.blocks.length;
+  const hue = (215 - tinggi * 3 + 360) % 360;
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, 'hsl(' + hue + ',52%,18%)');
+  g.addColorStop(0.55, 'hsl(' + ((hue + 20) % 360) + ',48%,32%)');
+  g.addColorStop(1, 'hsl(' + ((hue + 40) % 360) + ',44%,52%)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // bintang
+  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  for (let i = 0; i < 26; i++){
+    const x = (i * 137) % W;
+    const y = ((i * 89) % (H * 0.7) + st.cam * 0.25) % (H * 0.7);
+    const s = 1 + (i % 3) * 0.6;
+    ctx.globalAlpha = 0.25 + ((i * 7) % 10) / 14;
+    ctx.fillRect(x, y, s, s);
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.save();
+  if (st.goyang > 0.3) ctx.translate((Math.random() - .5) * st.goyang, (Math.random() - .5) * st.goyang);
+
+  // balok tersusun
+  st.blocks.forEach((b, i) => {
+    const y = yDari(i);
+    if (y < -BLOCK_H - 20 || y > H + 40) return;
+    gambarBalok(b.x, y, b.w, warnaBalok(i), 1);
+  });
+
+  // balok yang sedang bergerak
+  if (!st.over && st.cur){
+    const y = yDari(st.blocks.length);
+    gambarBalok(st.cur.x, y, st.cur.w, warnaBalok(st.blocks.length), 1);
+    // garis bantu
+    ctx.setLineDash([6, 8]);
+    ctx.strokeStyle = 'rgba(255,255,255,.3)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(st.cur.x, y); ctx.lineTo(st.cur.x, y + BLOCK_H * 2.2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // potongan yang berjatuhan
+  st.falling.forEach(f => {
+    ctx.save();
+    ctx.translate(f.x, f.y + BLOCK_H / 2);
+    ctx.rotate(f.rot);
+    gambarBalok(0, -BLOCK_H / 2, f.w, f.warna, 0.9);
+    ctx.restore();
+  });
+
+  ctx.restore();
+
+  // angka tinggi menara
+  ctx.font = "800 62px 'Baloo 2', Nunito, sans-serif";
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,.14)';
+  ctx.fillText(String(tinggi - 1), W / 2, H * 0.30);
+
+  // teks melayang ("PAS!")
+  st.teks.forEach(t => {
+    ctx.globalAlpha = Math.min(1, t.t * 1.6);
+    ctx.font = "800 26px 'Baloo 2', Nunito, sans-serif";
+    ctx.fillStyle = t.c;
+    ctx.strokeStyle = 'rgba(0,0,0,.5)';
+    ctx.lineWidth = 5;
+    ctx.strokeText(t.s, t.x, t.y);
+    ctx.fillText(t.s, t.x, t.y);
+    ctx.globalAlpha = 1;
+  });
+
+  // kilatan "pas sekali"
+  if (st.kilat > 0){
+    ctx.fillStyle = 'rgba(255,220,120,' + (st.kilat * 0.22) + ')';
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // kombo
+  if (st.combo >= 2 && !st.over){
+    ctx.font = "800 22px 'Baloo 2', Nunito, sans-serif";
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ffd166';
+    ctx.strokeStyle = 'rgba(0,0,0,.55)';
+    ctx.lineWidth = 5;
+    const s = 'KOMBO x' + st.combo;
+    ctx.strokeText(s, W - 18, 40);
+    ctx.fillText(s, W - 18, 40);
+  }
+}
+
+function gambarBalok(cx0, y, w, warna, alpha){
+  const x = cx0 - w / 2;
+  ctx.globalAlpha = alpha;
+  // bayangan
+  ctx.fillStyle = 'rgba(0,0,0,.25)';
+  sudut(x + 3, y + 4, w, BLOCK_H, 8); ctx.fill();
+  // badan
+  const g = ctx.createLinearGradient(0, y, 0, y + BLOCK_H);
+  g.addColorStop(0, warna);
+  g.addColorStop(1, 'rgba(0,0,0,.35)');
+  ctx.fillStyle = warna;
+  sudut(x, y, w, BLOCK_H, 8); ctx.fill();
+  ctx.fillStyle = g;
+  sudut(x, y, w, BLOCK_H, 8); ctx.fill();
+  // kilau atas
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  sudut(x + 5, y + 4, Math.max(2, w - 10), 5, 3); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+/* --- gelung --- */
+let last = 0;
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - last) / 1000) || 0;
+  last = now;
+  update(dt);
+  gambar();
+}
+
+/* --- kendali --- */
+function tekan(e){
+  if (e) e.preventDefault();
+  el('petunjuk').classList.add('hilang');
+  if (!st.over) jatuhkan();
+}
+document.getElementById('panggung').addEventListener('pointerdown', tekan);
+window.addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown'){ e.preventDefault(); tekan(null); }
+});
+
+function restart(){ baru(); }
+
+/* --- suara --- */
+let ac = null;
+function nada(freqs, jeda){
+  try{
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t0 = ac.currentTime;
+    freqs.forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'triangle'; o.frequency.value = f;
+      const t = t0 + i * (jeda || 0.1);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.2, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t); o.stop(t + 0.22);
+    });
+  }catch(e){}
+}
+
+baru();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

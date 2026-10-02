@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Tembak Gelembung — Game Seru</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Nunito',system-ui,sans-serif;color:#fff;
+  background:radial-gradient(circle at 50% 0%,#0b3b63,#062137 45%,#020a14 100%);
+  background-attachment:fixed;min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:56px 12px 16px;overflow:hidden;
+}
+a.back{
+  position:fixed;top:12px;left:12px;z-index:20;text-decoration:none;
+  color:rgba(255,255,255,.8);font-weight:800;font-size:.82rem;
+  background:rgba(0,0,0,.34);padding:9px 15px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+}
+a.back:hover{color:#fff;background:rgba(0,0,0,.5)}
+
+.panggung{
+  position:relative;width:min(96vw,460px);aspect-ratio:460/640;
+  border-radius:24px;overflow:hidden;
+  border:3px solid rgba(255,255,255,.14);
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+  touch-action:none;cursor:pointer;
+}
+canvas{display:block;width:100%;height:100%}
+
+.hud{
+  position:absolute;top:0;left:0;right:0;padding:12px 14px 0;
+  display:flex;align-items:center;gap:10px;pointer-events:none;
+}
+.bar{flex:1;height:14px;border-radius:999px;background:rgba(0,0,0,.35);overflow:hidden;border:2px solid rgba(255,255,255,.2)}
+.bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#7dffb0,#ffd166,#ff6b6b);transition:width .25s linear}
+.skor{
+  font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.35rem;
+  text-shadow:0 2px 8px rgba(0,0,0,.7);min-width:64px;text-align:right;
+}
+.waktu{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.35rem;
+  text-shadow:0 2px 8px rgba(0,0,0,.7);min-width:38px}
+
+.kombo{
+  position:absolute;top:64px;left:50%;transform:translateX(-50%) scale(.6);
+  font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.5rem;color:#ffd166;
+  text-shadow:0 3px 10px rgba(0,0,0,.7);opacity:0;transition:all .18s;pointer-events:none;
+}
+.kombo.on{opacity:1;transform:translateX(-50%) scale(1)}
+
+.done{
+  position:fixed;inset:0;display:none;place-items:center;z-index:30;
+  background:rgba(2,8,16,.88);backdrop-filter:blur(7px);padding:20px;
+}
+.done.on{display:grid}
+.card{
+  background:linear-gradient(160deg,#0f4468,#062033);border:1px solid rgba(255,255,255,.16);
+  border-radius:26px;padding:30px 26px;text-align:center;max-width:360px;width:100%;
+  animation:pop .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.card .em{font-size:3.6rem;line-height:1}
+.card h2{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.6rem;margin-top:6px}
+.card .lbl{font-size:.76rem;font-weight:800;letter-spacing:.12em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-top:8px}
+.card .big{font-family:'Baloo 2',sans-serif;font-size:3rem;color:#7dffb0;margin:2px 0 0;line-height:1}
+.card p{color:rgba(255,255,255,.7);font-weight:700;font-size:.92rem;line-height:1.5;margin-top:12px}
+.card .rekor{color:rgba(255,255,255,.55);font-weight:800;font-size:.85rem;margin-top:8px}
+.card button{
+  margin-top:18px;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.05rem;
+  padding:14px 34px;border-radius:999px;border:none;cursor:pointer;color:#04231c;
+  background:linear-gradient(180deg,#9dffc9,#3ddc97);border-bottom:5px solid #1a8a5c;width:100%;
+}
+.card button:active{transform:translateY(3px);border-bottom-width:2px}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.05ms !important}}
+</style>
+</head>
+<body>
+<a class="back" href="../">← Dunia Kiya &amp; Zhian</a>
+
+<div class="panggung" id="panggung">
+  <canvas id="cv"></canvas>
+  <div class="hud">
+    <div class="waktu" id="waktu">45</div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="skor" id="skor">0</div>
+  </div>
+  <div class="kombo" id="kombo"></div>
+</div>
+
+<div class="done" id="done">
+  <div class="card">
+    <div class="em" id="rEmoji">🫧</div>
+    <h2 id="rTitle">Waktu Habis!</h2>
+    <div class="lbl">Skor kamu</div>
+    <div class="big" id="rBig">0</div>
+    <div class="rekor" id="rBest"></div>
+    <p id="rMsg"></p>
+    <button onclick="restart()">Main Lagi!</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const DURASI = 45;
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const el = id => document.getElementById(id);
+
+let VW = 460, VH = 640, skala = 1;
+
+function ukuran(){
+  const box = document.getElementById('panggung').getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  VW = Math.max(200, Math.round(box.width));
+  VH = Math.max(280, Math.round(box.height));
+  skala = Math.min(2, dpr);
+  cv.width = Math.round(VW * skala);
+  cv.height = Math.round(VH * skala);
+  ctx.setTransform(skala, 0, 0, skala, 0, 0);
+}
+window.addEventListener('resize', () => { ukuran(); });
+
+const WARNA = ['#7dd3fc','#a5f3fc','#c4b5fd','#fbcfe8','#bbf7d0','#fde68a'];
+
+let st = null;
+
+function baru(){
+  st = {
+    bubbles: [], parts: [], t: 0, spawn: 0,
+    skor: 0, waktu: DURASI, jalan: true,
+    kombo: 0, komboT: 0, gelembung: 0, bintang: 0,
+    goyang: 0,
+    best: +(localStorage.getItem('gelembung.rekor') || 0),
+  };
+  el('done').classList.remove('on');
+  el('skor').textContent = '0';
+  el('waktu').textContent = DURASI;
+  el('bar').style.width = '100%';
+  el('kombo').classList.remove('on');
+}
+
+function munculkan(){
+  const r = 20 + Math.random() * 26;
+  const bintang = Math.random() < 0.14;
+  st.bubbles.push({
+    x: r + 10 + Math.random() * (VW - r * 2 - 20),
+    y: VH + r,
+    r: bintang ? r * 0.92 : r,
+    vy: -(38 + r * 1.1) * (0.85 + Math.random() * 0.35),
+    fase: Math.random() * 6.28,
+    amp: 8 + Math.random() * 16,
+    warna: bintang ? '#ffd166' : WARNA[Math.floor(Math.random() * WARNA.length)],
+    bintang, hidup: 1, muncul: 0,
+  });
+}
+
+function update(dt){
+  st.t += dt;
+  st.goyang *= 0.9;
+
+  if (st.jalan){
+    st.waktu -= dt;
+    if (st.waktu <= 0){ st.waktu = 0; selesai(); }
+    el('waktu').textContent = Math.ceil(st.waktu);
+    el('bar').style.width = (st.waktu / DURASI * 100) + '%';
+  }
+
+  st.spawn -= dt;
+  if (st.spawn <= 0 && st.jalan){
+    munculkan();
+    st.spawn = 0.34 + Math.random() * 0.30;
+  }
+
+  // gelembung naik
+  for (let i = st.bubbles.length - 1; i >= 0; i--){
+    const b = st.bubbles[i];
+    b.y += b.vy * dt;
+    b.muncul = Math.min(1, b.muncul + dt * 4);
+    if (b.y + b.r < -20) st.bubbles.splice(i, 1);
+  }
+
+  // pecahan
+  for (let i = st.parts.length - 1; i >= 0; i--){
+    const p = st.parts[i];
+    p.vy += 420 * dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.hidup -= dt;
+    if (p.hidup <= 0) st.parts.splice(i, 1);
+  }
+
+  // kombo
+  if (st.komboT > 0){
+    st.komboT -= dt;
+    if (st.komboT <= 0){ st.kombo = 0; el('kombo').classList.remove('on'); }
+  }
+}
+
+function pecahkan(b, x, y){
+  st.bubbles.splice(st.bubbles.indexOf(b), 1);
+  const poin = b.bintang ? 3 : 1;
+  st.skor += poin;
+  el('skor').textContent = st.skor;
+  if (b.bintang) st.bintang++; else st.gelembung++;
+
+  // kombo cepat
+  st.kombo++;
+  st.komboT = 1.1;
+  if (st.kombo >= 3){
+    const k = el('kombo');
+    k.textContent = 'KOMBO x' + st.kombo + '!';
+    k.classList.add('on');
+  }
+
+  // pecahan
+  const n = b.bintang ? 12 : 8;
+  for (let i = 0; i < n; i++){
+    const a = Math.random() * Math.PI * 2;
+    const sp = 60 + Math.random() * 200;
+    st.parts.push({
+      x: x, y: y,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
+      r: 2 + Math.random() * 4,
+      hidup: 0.45 + Math.random() * 0.3, max: 0.75,
+      warna: b.bintang ? '#ffe9a8' : b.warna,
+    });
+  }
+  nada(b.bintang ? [880, 1320, 1760] : [520 + st.kombo * 40], 0.05);
+}
+
+function sentuh(e){
+  e.preventDefault();
+  if (!st.jalan) return;
+  const r = cv.getBoundingClientRect();
+  const pt = e.touches ? e.touches[0] : e;
+  const x = (pt.clientX - r.left) / r.width * VW;
+  const y = (pt.clientY - r.top) / r.height * VH;
+  // cari gelembung teratas yang tersentuh
+  for (let i = st.bubbles.length - 1; i >= 0; i--){
+    const b = st.bubbles[i];
+    if (Math.hypot(b.x - x, b.y - y) <= b.r * 1.12){ pecahkan(b, b.x, b.y); return; }
+  }
+}
+
+function selesai(){
+  st.jalan = false;
+  const rekorBaru = st.skor > st.best;
+  if (rekorBaru){ st.best = st.skor; try{ localStorage.setItem('gelembung.rekor', st.skor); }catch(e){} }
+  el('rBig').textContent = st.skor;
+  el('rEmoji').textContent = rekorBaru ? '🏆' : '🫧';
+  el('rTitle').textContent = rekorBaru ? 'Rekor Baru!' : 'Waktu Habis!';
+  el('rBest').textContent = 'Rekor terbaik: ' + st.best;
+  el('rMsg').textContent = 'Kamu memecahkan ' + st.gelembung + ' gelembung dan ' + st.bintang + ' gelembung bintang.';
+  setTimeout(() => el('done').classList.add('on'), 420);
+  nada([660, 520, 400], 0.12);
+}
+
+/* ---------- gambar ---------- */
+function gambar(){
+  // air
+  const g = ctx.createLinearGradient(0, 0, 0, VH);
+  g.addColorStop(0, '#0e5f8f');
+  g.addColorStop(0.5, '#0a3f66');
+  g.addColorStop(1, '#052034');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, VW, VH);
+
+  // sinar cahaya
+  ctx.save();
+  ctx.globalAlpha = 0.10;
+  ctx.fillStyle = '#bff0ff';
+  for (let i = 0; i < 5; i++){
+    const x = VW * (0.1 + i * 0.2) + Math.sin(st.t * 0.4 + i) * 16;
+    ctx.beginPath();
+    ctx.moveTo(x - 22, 0);
+    ctx.lineTo(x + 22, 0);
+    ctx.lineTo(x + 74, VH);
+    ctx.lineTo(x - 20, VH);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // rumput laut
+  ctx.strokeStyle = 'rgba(30,140,110,.45)';
+  ctx.lineWidth = 9;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 6; i++){
+    const x = 24 + i * (VW - 40) / 5;
+    ctx.beginPath();
+    ctx.moveTo(x, VH);
+    ctx.quadraticCurveTo(x + Math.sin(st.t * 0.8 + i) * 22, VH - 60, x + Math.sin(st.t * 0.8 + i * 1.7) * 30, VH - 118);
+    ctx.stroke();
+  }
+
+  ctx.save();
+  if (st.goyang > 0.2) ctx.translate((Math.random() - .5) * st.goyang, (Math.random() - .5) * st.goyang);
+
+  // gelembung
+  st.bubbles.forEach(b => {
+    const r = b.r * (0.5 + b.muncul * 0.5);
+    const grd = ctx.createRadialGradient(b.x - r * .35, b.y - r * .35, r * .1, b.x, b.y, r);
+    if (b.bintang){
+      grd.addColorStop(0, 'rgba(255,255,255,.9)');
+      grd.addColorStop(.55, 'rgba(255,214,102,.85)');
+      grd.addColorStop(1, 'rgba(255,170,40,.55)');
+    } else {
+      grd.addColorStop(0, 'rgba(255,255,255,.75)');
+      grd.addColorStop(.55, hexA(b.warna, .42));
+      grd.addColorStop(1, hexA(b.warna, .16));
+    }
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill();
+
+    // tepi
+    ctx.strokeStyle = b.bintang ? 'rgba(255,240,180,.9)' : 'rgba(255,255,255,.55)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.stroke();
+
+    // kilau
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    ctx.beginPath(); ctx.ellipse(b.x - r * .34, b.y - r * .38, r * .17, r * .11, -0.6, 0, Math.PI * 2); ctx.fill();
+
+    // bintang di dalam
+    if (b.bintang){
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(st.t * 1.2);
+      ctx.fillStyle = '#fff8dc';
+      bintangPath(ctx, 0, 0, r * .52, 5);
+      ctx.fill();
+      ctx.restore();
+    }
+  });
+
+  // pecahan
+  st.parts.forEach(p => {
+    ctx.globalAlpha = Math.max(0, p.hidup / p.max);
+    ctx.fillStyle = p.warna;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+}
+
+function hexA(hex, a){
+  const n = parseInt(hex.slice(1), 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+function bintangPath(c, cx, cy, R, n){
+  c.beginPath();
+  for (let i = 0; i < n * 2; i++){
+    const a = -Math.PI / 2 + i * Math.PI / n;
+    const rr = i % 2 ? R * .44 : R;
+    c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+  }
+  c.closePath();
+}
+
+/* ---------- gelung ---------- */
+let last = 0;
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - last) / 1000) || 0;
+  last = now;
+  update(dt);
+  gambar();
+}
+
+/* ---------- suara ---------- */
+let ac = null;
+function nada(freqs, jeda){
+  try{
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t0 = ac.currentTime;
+    freqs.forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      const t = t0 + i * (jeda || 0.06);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.16, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t); o.stop(t + 0.16);
+    });
+  }catch(e){}
+}
+
+function restart(){ baru(); }
+
+ukuran();
+baru();
+document.getElementById('panggung').addEventListener('pointerdown', sentuh);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

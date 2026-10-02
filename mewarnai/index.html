@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mewarnai Gambar — Belajar TK</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Nunito',system-ui,sans-serif;color:#fff;
+  background:radial-gradient(circle at 50% -10%,#7a4a12,#4a2a08 42%,#1d0f02 100%);
+  background-attachment:fixed;min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;
+  padding:62px 14px 22px;overflow-x:hidden;
+}
+a.back{
+  position:fixed;top:12px;left:12px;z-index:20;text-decoration:none;
+  color:rgba(255,255,255,.8);font-weight:800;font-size:.82rem;
+  background:rgba(0,0,0,.34);padding:9px 15px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+}
+a.back:hover{color:#fff;background:rgba(0,0,0,.5)}
+
+h1{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:clamp(1.4rem,5.6vw,2rem);text-align:center}
+.sub{color:rgba(255,255,255,.6);font-weight:700;font-size:.84rem;margin-top:3px;text-align:center}
+
+.pilih-gambar{display:flex;align-items:center;gap:14px;margin:14px 0 10px}
+.nav-btn{
+  width:46px;height:46px;border-radius:50%;cursor:pointer;font-size:1.3rem;
+  background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.18);color:#fff;
+  display:grid;place-items:center;
+}
+.nav-btn:active{transform:scale(.9)}
+.nama-gambar{
+  font-family:'Baloo 2',sans-serif;font-weight:800;font-size:1.25rem;
+  min-width:150px;text-align:center;color:#ffd166;
+}
+
+.papan{
+  position:relative;width:min(88vw,380px);aspect-ratio:1;
+  border-radius:26px;overflow:hidden;
+  border:4px solid rgba(255,255,255,.16);
+  box-shadow:0 20px 50px rgba(0,0,0,.45);
+  background:#fff;touch-action:none;
+}
+canvas{display:block;width:100%;height:100%;cursor:crosshair}
+
+.palette{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:9px;
+  width:min(88vw,380px);margin-top:16px;
+}
+.warna{
+  aspect-ratio:1;border-radius:50%;cursor:pointer;
+  border:3px solid rgba(255,255,255,.28);
+  transition:transform .13s,box-shadow .13s;
+  position:relative;
+}
+.warna:active{transform:scale(.9)}
+.warna.pilih{border-color:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.28);transform:scale(1.08)}
+.warna.putih{
+  background:
+    repeating-conic-gradient(#e5e5e5 0 25%,#fff 0 50%) 50%/14px 14px;
+}
+.warna.putih::after{
+  content:'🧽';position:absolute;inset:0;display:grid;place-items:center;font-size:1.1rem;
+}
+
+.aksi{display:flex;gap:10px;width:min(88vw,380px);margin-top:14px}
+.aksi button{
+  flex:1;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:.95rem;
+  padding:13px 8px;border-radius:16px;border:none;cursor:pointer;color:#fff;
+  background:rgba(255,255,255,.1);border-bottom:4px solid rgba(0,0,0,.3);
+}
+.aksi button:active{transform:translateY(3px);border-bottom-width:1px}
+.aksi button.utama{background:linear-gradient(180deg,#ffe08a,#ffc23c);color:#3a2405;border-bottom-color:#b8801a}
+
+.toast{
+  position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:rgba(0,0,0,.8);color:#fff;font-weight:800;font-size:.9rem;
+  padding:12px 22px;border-radius:999px;opacity:0;transition:all .3s;pointer-events:none;z-index:40;
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(prefers-reduced-motion:reduce){*{transition-duration:.05ms !important}}
+</style>
+</head>
+<body>
+<a class="back" href="../">← Dunia Kiya &amp; Zhian</a>
+
+<h1>🎨 Mewarnai Gambar</h1>
+<p class="sub">Pilih warna, lalu sentuh bagian gambar!</p>
+
+<div class="pilih-gambar">
+  <button class="nav-btn" id="prev" title="Gambar sebelumnya">◀</button>
+  <div class="nama-gambar" id="nama">Kucing</div>
+  <button class="nav-btn" id="next" title="Gambar berikutnya">▶</button>
+</div>
+
+<div class="papan">
+  <canvas id="cv"></canvas>
+</div>
+
+<div class="palette" id="palette"></div>
+
+<div class="aksi">
+  <button id="hapus">🧽 Hapus Semua</button>
+  <button id="simpan" class="utama">💾 Simpan</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const S = 300;                       // ruang gambar 300 x 300
+const TAU = Math.PI * 2;
+
+/* --- alat pembuat bentuk --- */
+const lingkaran = (x, y, r) => c => { c.beginPath(); c.arc(x, y, r, 0, TAU); c.closePath(); };
+const bulat = (x, y, rx, ry, rot) => c => { c.beginPath(); c.ellipse(x, y, rx, ry, rot || 0, 0, TAU); c.closePath(); };
+const kotak = (x, y, w, h) => c => { c.beginPath(); c.rect(x, y, w, h); c.closePath(); };
+const segi = pts => c => {
+  c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+  c.closePath();
+};
+
+/* --- gambar-gambar --- */
+const kelopak = [];
+for (let i = 0; i < 5; i++){
+  const a = -Math.PI / 2 + i * TAU / 5;
+  kelopak.push(bulat(150 + Math.cos(a) * 54, 128 + Math.sin(a) * 54, 42, 42, 0));
+}
+
+const GAMBAR = [
+  { nama:'Kucing', suku:[
+    { n:'telinga kiri',  p: segi([[72,116],[58,28],[146,84]]) },
+    { n:'telinga kanan', p: segi([[228,116],[242,28],[154,84]]) },
+    { n:'kepala',        p: lingkaran(150,168,102) },
+    { n:'mata kiri',     p: lingkaran(114,158,19) },
+    { n:'mata kanan',    p: lingkaran(186,158,19) },
+    { n:'hidung',        p: segi([[150,196],[134,214],[166,214]]) },
+  ]},
+  { nama:'Ikan', suku:[
+    { n:'ekor',        p: segi([[36,150],[6,106],[6,194]]) },
+    { n:'sirip atas',  p: segi([[128,96],[176,96],[152,44]]) },
+    { n:'sirip bawah', p: segi([[128,204],[176,204],[152,256]]) },
+    { n:'badan',       p: bulat(160,150,108,66,0) },
+    { n:'mata',        p: lingkaran(216,128,15) },
+  ]},
+  { nama:'Kupu-kupu', suku:[
+    { n:'sayap kiri atas',  p: bulat(96,118,62,52,-0.34) },
+    { n:'sayap kanan atas', p: bulat(204,118,62,52,0.34) },
+    { n:'sayap kiri bawah', p: bulat(108,204,52,44,-0.2) },
+    { n:'sayap kanan bawah',p: bulat(192,204,52,44,0.2) },
+    { n:'badan',            p: bulat(150,170,15,74,0) },
+    { n:'kepala',           p: lingkaran(150,88,19) },
+  ]},
+  { nama:'Bunga', suku:[
+    { n:'daun kiri',  p: bulat(108,218,34,19,-0.5) },
+    { n:'daun kanan', p: bulat(192,228,34,19,0.5) },
+    { n:'batang',     p: kotak(142,172,16,100) },
+    { n:'kelopak 1',  p: kelopak[0] },
+    { n:'kelopak 2',  p: kelopak[1] },
+    { n:'kelopak 3',  p: kelopak[2] },
+    { n:'kelopak 4',  p: kelopak[3] },
+    { n:'kelopak 5',  p: kelopak[4] },
+    { n:'tengah',     p: lingkaran(150,128,32) },
+  ]},
+  { nama:'Rumah', suku:[
+    { n:'matahari',   p: lingkaran(254,48,34) },
+    { n:'tanah',      p: kotak(-4,258,308,46) },
+    { n:'dinding',    p: kotak(66,132,168,128) },
+    { n:'atap',       p: segi([[150,42],[262,134],[38,134]]) },
+    { n:'jendela 1',  p: kotak(86,152,40,40) },
+    { n:'jendela 2',  p: kotak(174,152,40,40) },
+    { n:'pintu',      p: kotak(132,196,36,64) },
+  ]},
+  { nama:'Mobil', suku:[
+    { n:'matahari',   p: lingkaran(250,50,30) },
+    { n:'jalan',      p: kotak(-4,232,308,72) },
+    { n:'badan',      p: kotak(24,150,252,72) },
+    { n:'atap',       p: segi([[96,150],[128,104],[212,104],[244,150]]) },
+    { n:'jendela',    p: kotak(140,116,66,32) },
+    { n:'roda kiri',  p: lingkaran(84,226,30) },
+    { n:'roda kanan', p: lingkaran(216,226,30) },
+  ]},
+];
+
+const WARNA = [
+  '#ef4444','#f97316','#facc15','#22c55e','#14b8a6','#3b82f6','#a855f7',
+  '#ec4899','#f5d0a9','#8b5e3c','#94a3b8','#1f2937','#ffffff'
+];
+
+let idx = 0;
+let warnaTerpilih = '#ef4444';
+let warna = [];
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let pick = document.createElement('canvas');
+pick.width = S; pick.height = S;
+const pctx = pick.getContext('2d');
+
+function siapkanKanvas(){
+  // digambar 2x lipat supaya garisnya tajam di layar HP
+  cv.width = S * 2;
+  cv.height = S * 2;
+  ctx.setTransform(2, 0, 0, 2, 0, 0);
+}
+
+function gambarUlang(){
+  const pic = GAMBAR[idx];
+  ctx.clearRect(0, 0, S, S);
+  // kertas putih
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, S, S);
+  // isi tiap bagian
+  pic.suku.forEach((s, i) => {
+    s.p(ctx);
+    ctx.fillStyle = warna[i] || '#ffffff';
+    ctx.fill();
+  });
+  // garis luar di atas semua isian
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#3a2a4a';
+  pic.suku.forEach(s => {
+    s.p(ctx);
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+  });
+}
+
+function siapkanPick(){
+  const pic = GAMBAR[idx];
+  pctx.clearRect(0, 0, S, S);
+  pic.suku.forEach((s, i) => {
+    s.p(pctx);
+    pctx.fillStyle = 'rgb(' + (i + 1) + ',0,0)';
+    pctx.fill();
+  });
+}
+
+function muatGambar(i){
+  idx = (i + GAMBAR.length) % GAMBAR.length;
+  warna = GAMBAR[idx].suku.map(() => '#ffffff');
+  document.getElementById('nama').textContent = GAMBAR[idx].nama;
+  siapkanKanvas();
+  gambarUlang();
+  siapkanPick();
+}
+
+function sentuh(ev){
+  ev.preventDefault();
+  const r = cv.getBoundingClientRect();
+  const pt = ev.touches ? ev.touches[0] : ev;
+  const x = Math.floor((pt.clientX - r.left) / r.width * S);
+  const y = Math.floor((pt.clientY - r.top) / r.height * S);
+  if (x < 0 || y < 0 || x >= S || y >= S) return;
+  const d = pctx.getImageData(x, y, 1, 1).data;
+  const i = d[0] - 1;
+  if (i < 0 || i >= GAMBAR[idx].suku.length) return;
+  warna[i] = warnaTerpilih;
+  gambarUlang();
+  nada(warnaTerpilih === '#ffffff' ? 300 : 620 + Math.random() * 260);
+}
+
+/* --- palet warna --- */
+const pal = document.getElementById('palette');
+WARNA.forEach(w => {
+  const b = document.createElement('div');
+  b.className = 'warna' + (w === '#ffffff' ? ' putih' : '');
+  if (w !== '#ffffff') b.style.background = w;
+  if (w === warnaTerpilih) b.classList.add('pilih');
+  b.onclick = () => {
+    warnaTerpilih = w;
+    document.querySelectorAll('.warna').forEach(x => x.classList.remove('pilih'));
+    b.classList.add('pilih');
+    nada(500);
+  };
+  pal.appendChild(b);
+});
+
+/* --- tombol --- */
+document.getElementById('prev').onclick = () => { muatGambar(idx - 1); nada(420); };
+document.getElementById('next').onclick = () => { muatGambar(idx + 1); nada(560); };
+document.getElementById('hapus').onclick = () => {
+  warna = GAMBAR[idx].suku.map(() => '#ffffff');
+  gambarUlang();
+  pesan('Gambar dikosongkan lagi 🧽');
+};
+document.getElementById('simpan').onclick = () => {
+  try {
+    const a = document.createElement('a');
+    a.download = 'mewarnai-' + GAMBAR[idx].nama.toLowerCase() + '.png';
+    a.href = cv.toDataURL('image/png');
+    a.click();
+    pesan('Gambar disimpan! 💾');
+  } catch (e) { pesan('Maaf, tidak bisa menyimpan 😅'); }
+};
+
+function pesan(t){
+  const el = document.getElementById('toast');
+  el.textContent = t;
+  el.classList.add('on');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('on'), 1600);
+}
+
+cv.addEventListener('pointerdown', sentuh);
+
+let ac = null;
+function nada(f){
+  try{
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const t0 = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.18, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+    o.connect(g); g.connect(ac.destination);
+    o.start(t0); o.stop(t0 + 0.24);
+  }catch(e){}
+}
+
+muatGambar(0);
+</script>
+</body>
+</html>

@@ -18,6 +18,14 @@ const GAMES = [
     desc:'Adu pahlawan, bisa 2 pemain!', cat:'main', lvl:2, badge:'BARU!', badgeCol:'#e8402a',
     c1:'#ffb703', c2:'#c1121f', prev:'duel' },
 
+  { id:'susun-menara', href:'susun-menara/', title:'Susun Menara',
+    desc:'Tumpuk balok setinggi mungkin!', cat:'main', lvl:1, badge:'BARU!', badgeCol:'#ca8a04',
+    c1:'#facc15', c2:'#713f12', prev:'menara' },
+
+  { id:'gelembung', href:'gelembung/', title:'Tembak Gelembung',
+    desc:'Pecahkan gelembung, kejar skor!', cat:'main', lvl:1, badge:'BARU!', badgeCol:'#0284c7',
+    c1:'#38bdf8', c2:'#075985', prev:'gelembung' },
+
   { id:'snake-game', href:'snake-game/', title:'Snake Arena',
     desc:'Makan ular lain, pilih skin naga!', cat:'main', lvl:2,
     c1:'#10b981', c2:'#065f46', prev:'snake' },
@@ -41,6 +49,22 @@ const GAMES = [
   { id:'hole-io', href:'hole-io/', title:'Hole.io',
     desc:'Lobang rakus, makan seisi kota!', cat:'main', lvl:1,
     c1:'#14b8a6', c2:'#064e3b', prev:'hole' },
+
+  { id:'belajar-pola', href:'belajar-pola/', title:'Pola Warna',
+    desc:'Tebak lanjutan polanya!', cat:'belajar', lvl:1, badge:'BARU!', badgeCol:'#7c3aed',
+    c1:'#a78bfa', c2:'#5b21b6', prev:'pola' },
+
+  { id:'belajar-bentuk', href:'belajar-bentuk/', title:'Tebak Bentuk',
+    desc:'Kenali lingkaran, segitiga, bintang!', cat:'belajar', lvl:1, badge:'BARU!', badgeCol:'#1d4ed8',
+    c1:'#60a5fa', c2:'#1e40af', prev:'bentuk' },
+
+  { id:'belajar-pasangan', href:'belajar-pasangan/', title:'Cari Pasangan',
+    desc:'Buka kartu, cari gambar yang sama!', cat:'belajar', lvl:1, badge:'BARU!', badgeCol:'#be185d',
+    c1:'#f472b6', c2:'#9d174d', prev:'pasangan' },
+
+  { id:'mewarnai', href:'mewarnai/', title:'Mewarnai Gambar',
+    desc:'Warnai kucing, ikan, bunga, mobil!', cat:'belajar', lvl:1, badge:'BARU!', badgeCol:'#b45309',
+    c1:'#fbbf24', c2:'#b45309', prev:'mewarnai' },
 
   { id:'belajar-huruf', href:'belajar-huruf/', title:'Isi Huruf',
     desc:'Tebak huruf yang hilang!', cat:'belajar', lvl:1,
@@ -104,6 +128,22 @@ function chibi(c, x, baseY, col, acc, dir, scale) {
   c.fillStyle = '#2b1a3e';
   c.beginPath(); c.arc(5, -76, 2.6, 0, TAU); c.arc(-2, -76, 2.2, 0, TAU); c.fill();
   c.restore();
+}
+
+/* gambar satu bentuk pada kotak (x,y,ukuran s) */
+function drawSh(c, shape, color, x, y, s) {
+  const cx = x + s / 2, cy = y + s / 2, r = s / 2, k = s * 0.16;
+  c.fillStyle = color;
+  if (shape === 'circle') { c.beginPath(); c.arc(cx, cy, r * 0.94, 0, TAU); }
+  else if (shape === 'square') {
+    c.beginPath();
+    if (c.roundRect) c.roundRect(x, y, s, s, k); else c.rect(x, y, s, s);
+  }
+  else if (shape === 'triangle') { c.beginPath(); c.moveTo(cx, y); c.lineTo(x + s, y + s); c.lineTo(x, y + s); c.closePath(); }
+  else if (shape === 'star') { starPath(c, cx, cy, r, 5); }
+  else if (shape === 'diamond') { c.beginPath(); c.moveTo(cx, y); c.lineTo(x + s, cy); c.lineTo(cx, y + s); c.lineTo(x, cy); c.closePath(); }
+  else { c.beginPath(); c.arc(cx, cy, r * 0.94, 0, TAU); }
+  c.fill();
 }
 
 /* ============================================================
@@ -514,6 +554,193 @@ const PREVIEWS = {
     c.beginPath(); c.moveTo(sx, h * .90); c.lineTo(px, h * .90); c.stroke();
     c.fillStyle = '#ff9ff3';
     c.beginPath(); c.arc(px, h * .90, 9, 0, TAU); c.fill();
+  },
+
+  /* ---- Pola Warna: deret bentuk dengan tanda tanya ---- */
+  pola(c, w, h, t) {
+    c.fillStyle = '#2a1a52'; c.fillRect(0, 0, w, h);
+    const SH = ['circle', 'square', 'triangle', 'star'];
+    const CL = ['#f472b6', '#60a5fa', '#facc15', '#34d399'];
+    const n = 6;
+    const k = (t % 3.2) / 3.2;
+    const revealed = k > 0.60;
+    const size = Math.min(h * 0.21, w / 9);
+    const gap = size * 0.36;
+    let x = (w - (n * size + (n - 1) * gap)) / 2;
+    const y = h * 0.40;
+    for (let i = 0; i < n; i++) {
+      const last = i === n - 1;
+      if (last && !revealed) {
+        c.fillStyle = 'rgba(255,255,255,.14)';
+        rr(c, x, y, size, size, size * 0.22); c.fill();
+        c.globalAlpha = 0.45 + Math.abs(Math.sin(t * 4)) * 0.55;
+        c.fillStyle = '#ffd166';
+        c.font = `800 ${Math.round(size * 0.72)}px 'Baloo 2', Nunito, sans-serif`;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText('?', x + size / 2, y + size / 2);
+        c.globalAlpha = 1;
+      } else {
+        const pop = last ? Math.min(1, (k - 0.60) * 5) : 1;
+        const s = size * (last ? 1 + (1 - pop) * 0.5 : 1);
+        const sh = SH[i % 4], col = CL[i % 4];
+        drawSh(c, sh, col, x + (size - s) / 2, y + (size - s) / 2, s);
+      }
+      x += size + gap;
+    }
+  },
+
+  /* ---- Tebak Bentuk: satu bentuk besar berganti-ganti ---- */
+  bentuk(c, w, h, t) {
+    c.fillStyle = '#062b3f'; c.fillRect(0, 0, w, h);
+    const S = [['circle', 'LINGKARAN', '#f87171'], ['triangle', 'SEGITIGA', '#facc15'],
+               ['star', 'BINTANG', '#fbbf24'], ['square', 'PERSEGI', '#60a5fa']];
+    const i = Math.floor(t / 1.15) % S.length;
+    const en = S[i], k = (t % 1.15) / 1.15;
+    const pop = Math.min(1, k * 4);
+    const size = Math.min(h * 0.44, w * 0.30);
+    const cx = w / 2, cy = h * 0.42;
+    c.save();
+    c.translate(cx, cy);
+    c.scale(0.55 + pop * 0.45, 0.55 + pop * 0.45);
+    c.rotate((1 - k) * 0.25);
+    drawSh(c, en[0], en[2], -size / 2, -size / 2, size);
+    c.restore();
+    c.globalAlpha = pop;
+    c.fillStyle = '#fff';
+    c.font = `800 ${Math.round(h * 0.105)}px 'Baloo 2', Nunito, sans-serif`;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(en[1], cx, h * 0.80);
+    c.globalAlpha = 1;
+  },
+
+  /* ---- Cari Pasangan: kartu dibalik berpasangan ---- */
+  pasangan(c, w, h, t) {
+    c.fillStyle = '#3d1440'; c.fillRect(0, 0, w, h);
+    const cols = 3, rows = 3, pad = w * 0.09;
+    const cw = (w - pad * 2) / cols, ch = (h - pad * 2) / rows;
+    const size = Math.min(cw, ch) * 0.84;
+    const emo = ['🐶', '🐱', '🐰', '🐶', '🦁', '🐱', '🐸', '🐼', '🐝'];
+    const k = (t % 4.2) / 4.2;
+    for (let r = 0; r < rows; r++) {
+      for (let q = 0; q < cols; q++) {
+        const i = r * cols + q;
+        const x = pad + q * cw + (cw - size) / 2;
+        const y = pad + r * ch + (ch - size) / 2;
+        let open = false, glow = false;
+        if ((i === 0 || i === 3) && k > 0.10 && k < 0.55) { open = true; glow = true; }
+        if ((i === 1 || i === 5) && k > 0.66) { open = true; }
+        if (i === 4) open = true;
+        c.fillStyle = open ? (glow ? '#d6ffe8' : '#fff4e0') : '#8b3fa0';
+        rr(c, x, y, size, size, size * 0.2); c.fill();
+        c.strokeStyle = glow ? '#4ade80' : 'rgba(255,255,255,.25)';
+        c.lineWidth = glow ? 3.5 : 2; c.stroke();
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        if (open) {
+          c.font = `${Math.round(size * 0.52)}px serif`;
+          c.fillStyle = '#3d1440';
+          c.fillText(emo[i], x + size / 2, y + size / 2 + 1);
+        } else {
+          c.fillStyle = 'rgba(255,255,255,.42)';
+          c.font = `800 ${Math.round(size * 0.42)}px 'Baloo 2', Nunito, sans-serif`;
+          c.fillText('?', x + size / 2, y + size / 2);
+        }
+      }
+    }
+  },
+
+  /* ---- Mewarnai: kelopak bunga terisi satu per satu ---- */
+  mewarnai(c, w, h, t) {
+    c.fillStyle = '#fffdf7'; c.fillRect(0, 0, w, h);
+    const cx = w / 2, cy = h * 0.44, R = Math.min(w, h) * 0.30;
+    const cols = ['#f472b6', '#60a5fa', '#facc15', '#34d399', '#fb923c'];
+    const k = (t % 4.2) / 4.2;
+    // batang
+    c.strokeStyle = '#22c55e'; c.lineWidth = 6; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(cx, cy + R * 0.8); c.lineTo(cx, h * 0.94); c.stroke();
+    // kelopak
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + i * TAU / 5;
+      const px = cx + Math.cos(a) * R * 0.62, py = cy + Math.sin(a) * R * 0.62;
+      const filled = k > (i + 1) * 0.14;
+      c.beginPath(); c.arc(px, py, R * 0.44, 0, TAU);
+      c.fillStyle = filled ? cols[i] : '#ffffff';
+      c.fill();
+      c.strokeStyle = '#3a2a4a'; c.lineWidth = 3.2; c.stroke();
+    }
+    // tengah
+    c.beginPath(); c.arc(cx, cy, R * 0.34, 0, TAU);
+    c.fillStyle = k > 0.78 ? '#fbbf24' : '#ffffff'; c.fill();
+    c.strokeStyle = '#3a2a4a'; c.lineWidth = 3.2; c.stroke();
+    // kuas
+    const bx = w * 0.14, by = h * 0.87, wob = Math.sin(t * 5) * 3;
+    c.fillStyle = '#8b5e3c'; c.fillRect(bx - 3, by + wob - 26, 6, 18);
+    c.fillStyle = '#c084fc';
+    c.beginPath(); c.arc(bx, by + wob, 9, 0, TAU); c.fill();
+  },
+
+  /* ---- Susun Menara: balok bertumpuk makin tinggi ---- */
+  menara(c, w, h, t) {
+    const g = c.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, '#1b2f6b'); g.addColorStop(1, '#5a3a8a');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    const P = ['#ff6b6b', '#ffa94d', '#ffd43b', '#69db7c', '#38d9a9', '#4dabf7'];
+    const bw = w * 0.40, bh = h * 0.115, base = h * 0.92;
+    const k = (t % 4) / 4;
+    const n = Math.min(6, Math.floor(k * 7) + 1);
+    for (let i = 0; i < n; i++) {
+      const y = base - i * bh;
+      const off = (i === n - 1) ? Math.sin(t * 3.2) * w * 0.15 : 0;
+      const x = w / 2 - bw / 2 + off;
+      c.fillStyle = 'rgba(0,0,0,.25)';
+      rr(c, x + 2, y - bh + 3, bw, bh - 3, 7); c.fill();
+      c.fillStyle = P[i % P.length];
+      rr(c, x, y - bh, bw, bh - 3, 7); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.3)';
+      rr(c, x + 5, y - bh + 4, bw - 10, 4, 2); c.fill();
+    }
+    if (k > 0.90) {
+      c.fillStyle = `rgba(255,220,120,${(1 - k) * 6})`;
+      c.fillRect(0, 0, w, h);
+    }
+  },
+
+  /* ---- Tembak Gelembung: gelembung naik lalu pecah ---- */
+  gelembung(c, w, h, t) {
+    const g = c.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, '#0e5f8f'); g.addColorStop(.6, '#0a3f66'); g.addColorStop(1, '#052034');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    // sinar cahaya
+    c.globalAlpha = .09; c.fillStyle = '#bff0ff';
+    for (let i = 0; i < 4; i++) {
+      const x = w * (0.15 + i * 0.24) + Math.sin(t * 0.5 + i) * 8;
+      c.beginPath();
+      c.moveTo(x - 14, 0); c.lineTo(x + 14, 0); c.lineTo(x + 46, h); c.lineTo(x - 12, h);
+      c.closePath(); c.fill();
+    }
+    c.globalAlpha = 1;
+    for (let i = 0; i < 5; i++) {
+      const k = ((t * (0.30 + i * 0.05)) + i * 0.37) % 1;
+      const x = w * (0.13 + i * 0.19) + Math.sin(t * 1.4 + i) * 12;
+      const y = h * 0.99 - k * h * 0.94;
+      const r = h * (0.078 + (i % 3) * 0.022);
+      const bintang = i === 2;
+      if (k > 0.86) {                       // pecah
+        const s = (k - 0.86) / 0.14;
+        c.strokeStyle = `rgba(255,255,255,${Math.max(0, 1 - s)})`;
+        c.lineWidth = 3 * (1 - s) + 1;
+        c.beginPath(); c.arc(x, y, r * (1 + s * 1.4), 0, TAU); c.stroke();
+      } else {
+        const gr = c.createRadialGradient(x - r * .34, y - r * .34, r * .1, x, y, r);
+        if (bintang) { gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,190,60,.62)'); }
+        else { gr.addColorStop(0, 'rgba(255,255,255,.72)'); gr.addColorStop(1, 'rgba(125,211,252,.22)'); }
+        c.fillStyle = gr;
+        c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+        c.strokeStyle = bintang ? 'rgba(255,240,180,.9)' : 'rgba(255,255,255,.5)';
+        c.lineWidth = 2; c.stroke();
+        c.fillStyle = 'rgba(255,255,255,.85)';
+        c.beginPath(); c.ellipse(x - r * .32, y - r * .36, r * .16, r * .1, -0.6, 0, TAU); c.fill();
+      }
+    }
   },
 };
 
