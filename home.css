@@ -1,0 +1,220 @@
+/* ============================================================
+   home.css — halaman utama "Dunia Kiya & Zhian"
+   Dibuat untuk anak: sasaran sentuh besar, huruf besar, warna
+   cerah, dan setiap kartu punya pratinjau yang bergerak.
+   ============================================================ */
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+:root{
+  --bg1:#2b1a5e; --bg2:#160c33; --bg3:#0b0620;
+  --card:rgba(255,255,255,.07);
+  --card-hi:rgba(255,255,255,.13);
+  --gold:#ffd166; --gold-d:#c98f14;
+  --ink:#1b1038;
+  --txt:#ffffff;
+  --txt-dim:rgba(255,255,255,.66);
+  --r:24px;
+}
+
+html,body{height:100%}
+body{
+  font-family:'Nunito',system-ui,-apple-system,sans-serif;
+  color:var(--txt);
+  background:radial-gradient(circle at 50% -10%,#4a2a86 0%,var(--bg1) 38%,var(--bg2) 72%,var(--bg3) 100%);
+  background-attachment:fixed;
+  min-height:100%;
+  overflow-x:hidden;
+  padding-bottom:64px;
+}
+
+/* ---------------- latar bergerak ---------------- */
+.sky{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.sky i{
+  position:absolute;display:block;border-radius:50%;
+  opacity:.5;filter:blur(.2px);
+  animation:drift linear infinite;
+}
+@keyframes drift{
+  0%{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(14px,-26px,0) scale(1.08)}
+  100%{transform:translate3d(0,0,0) scale(1)}
+}
+.sky .twinkle{animation:twinkle 3.2s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.25;transform:scale(.85)}50%{opacity:.9;transform:scale(1.15)}}
+
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 16px}
+
+/* ---------------- kepala halaman ---------------- */
+header{padding:34px 0 8px;text-align:center;position:relative}
+.logo{
+  font-family:'Baloo 2','Nunito',sans-serif;
+  font-weight:800;font-size:clamp(1.5rem,6.6vw,3.6rem);
+  line-height:1.05;letter-spacing:-.01em;
+  text-shadow:0 4px 0 rgba(0,0,0,.22),0 10px 30px rgba(0,0,0,.35);
+}
+.logo b{display:inline-block;animation:hop 2.4s ease-in-out infinite}
+.logo b:nth-child(1){color:#ff6b6b}
+.logo b:nth-child(2){color:#ffd166;animation-delay:.06s}
+.logo b:nth-child(3){color:#4ecdc4;animation-delay:.12s}
+.logo b:nth-child(4){color:#ff9ff3;animation-delay:.18s}
+.logo b:nth-child(5){color:#a0e7a0;animation-delay:.24s}
+@keyframes hop{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-7px) rotate(-2deg)}60%{transform:translateY(2px) rotate(1.5deg)}}
+.logo .l2{display:inline}
+/* di layar sempit judul jadi dua baris supaya besar & tidak bertabrakan */
+@media(max-width:620px){
+  .logo{font-size:clamp(1.7rem,7.6vw,2.6rem);line-height:1.12;padding:0 52px}
+  .logo .l2{display:block;font-size:.9em}
+}
+@media(max-width:400px){
+  .logo{padding:0 46px}
+}
+.tagline{color:var(--txt-dim);font-weight:700;font-size:clamp(.85rem,2.6vw,1.05rem);margin-top:10px}
+
+.sound-btn{
+  position:absolute;top:26px;right:0;
+  width:48px;height:48px;border-radius:50%;cursor:pointer;
+  background:var(--card);border:2px solid rgba(255,255,255,.16);
+  color:#fff;font-size:1.25rem;line-height:1;
+  display:grid;place-items:center;transition:transform .15s,background .15s;
+}
+.sound-btn:hover{background:var(--card-hi)}
+.sound-btn:active{transform:scale(.9)}
+@media(max-width:560px){
+  .sound-btn{width:42px;height:42px;font-size:1.1rem;top:16px}
+}
+
+/* ---------------- baris aksi ---------------- */
+.actions{display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;margin:22px 0 6px}
+.big-btn{
+  font-family:'Baloo 2','Nunito',sans-serif;
+  font-size:clamp(1rem,3.4vw,1.25rem);font-weight:800;
+  padding:16px 28px;border-radius:999px;cursor:pointer;color:#3a2405;
+  background:linear-gradient(180deg,#ffe08a,#ffc23c);
+  border:none;border-bottom:6px solid #b8801a;
+  box-shadow:0 10px 26px rgba(255,194,60,.30);
+  transition:transform .12s,box-shadow .12s,filter .12s;
+  display:inline-flex;align-items:center;gap:10px;
+}
+.big-btn:hover{filter:brightness(1.06);box-shadow:0 12px 32px rgba(255,194,60,.42)}
+.big-btn:active{transform:translateY(4px);border-bottom-width:2px;box-shadow:0 4px 12px rgba(255,194,60,.3)}
+.big-btn.rolling{animation:roll .5s linear infinite}
+@keyframes roll{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+
+/* ---------------- saringan kategori ---------------- */
+.filters{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:20px 0 6px}
+.chip{
+  font-family:'Baloo 2','Nunito',sans-serif;
+  font-size:clamp(.9rem,3vw,1.05rem);font-weight:800;
+  padding:12px 22px;border-radius:999px;cursor:pointer;
+  background:var(--card);color:var(--txt-dim);
+  border:2px solid rgba(255,255,255,.13);
+  transition:all .16s;white-space:nowrap;
+}
+.chip:hover{color:#fff;background:var(--card-hi);transform:translateY(-2px)}
+.chip.on{background:#fff;color:var(--ink);border-color:#fff;box-shadow:0 8px 22px rgba(255,255,255,.18)}
+.chip .n{opacity:.55;font-size:.78em;margin-left:6px}
+@media(max-width:560px){
+  .filters{gap:6px}
+  .chip{font-size:.8rem;padding:10px 11px}
+  .chip .n{margin-left:4px}
+}
+@media(max-width:430px){
+  .chip .n{display:none}
+}
+
+/* ---------------- bagian ---------------- */
+.sect{margin-top:30px}
+.sect-head{display:flex;align-items:center;gap:10px;margin:0 4px 14px}
+.sect-head h2{
+  font-family:'Baloo 2','Nunito',sans-serif;
+  font-size:clamp(1.1rem,3.6vw,1.5rem);font-weight:800;
+}
+.sect-head .line{flex:1;height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,.22),transparent)}
+
+/* ---------------- kisi kartu ---------------- */
+.grid{
+  display:grid;gap:18px;
+  grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+}
+@media(max-width:520px){.grid{grid-template-columns:1fr;gap:16px}}
+
+.card{
+  position:relative;display:flex;flex-direction:column;
+  background:var(--card);border-radius:var(--r);overflow:hidden;
+  text-decoration:none;color:inherit;cursor:pointer;
+  border:2px solid rgba(255,255,255,.09);
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .2s,border-color .2s;
+  will-change:transform;
+}
+.card:hover,.card:focus-visible{
+  transform:translateY(-8px) scale(1.02);
+  box-shadow:0 22px 48px rgba(0,0,0,.5);
+  border-color:var(--c1);
+  outline:none;
+}
+.card:active{transform:translateY(-2px) scale(.99)}
+
+.thumb{position:relative;aspect-ratio:16/10;background:linear-gradient(135deg,var(--c1),var(--c2));overflow:hidden}
+.thumb canvas{display:block;width:100%;height:100%}
+.badge{
+  position:absolute;top:12px;left:12px;z-index:2;
+  font-family:'Baloo 2','Nunito',sans-serif;
+  font-size:.82rem;font-weight:800;letter-spacing:.04em;
+  padding:6px 14px;border-radius:999px;color:#fff;
+  background:var(--badge,#e8402a);
+  box-shadow:0 6px 16px rgba(0,0,0,.35);
+  animation:pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.level{
+  position:absolute;top:12px;right:12px;z-index:2;
+  display:flex;gap:4px;padding:7px 11px;border-radius:999px;
+  background:rgba(0,0,0,.42);backdrop-filter:blur(4px);
+}
+.level i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.28)}
+.level i.on{background:var(--gold);box-shadow:0 0 8px rgba(255,209,102,.8)}
+
+.meta{padding:15px 16px 16px;display:flex;flex-direction:column;gap:5px;flex:1}
+.meta h3{
+  font-family:'Baloo 2','Nunito',sans-serif;
+  font-size:clamp(1.05rem,3.4vw,1.28rem);font-weight:800;line-height:1.15;
+}
+.meta p{font-size:clamp(.8rem,2.5vw,.9rem);color:var(--txt-dim);line-height:1.4;font-weight:600}
+.play{
+  margin-top:auto;align-self:stretch;text-align:center;
+  font-family:'Baloo 2','Nunito',sans-serif;font-weight:800;
+  font-size:1.02rem;padding:12px;border-radius:14px;
+  color:#fff;background:linear-gradient(135deg,var(--c1),var(--c2));
+  border-bottom:4px solid rgba(0,0,0,.3);
+  transition:filter .15s;
+}
+.card:hover .play{filter:brightness(1.14)}
+
+/* kartu sering dimainkan sedikit lebih ringkas */
+.mini .meta p{display:none}
+.mini .meta{padding:13px 15px 15px}
+
+/* ---------------- kosong ---------------- */
+.empty{
+  text-align:center;padding:52px 20px;color:var(--txt-dim);
+  font-weight:700;font-size:1.05rem;line-height:1.7;
+}
+.empty .em{font-size:3rem;display:block;margin-bottom:12px}
+
+/* ---------------- kaki ---------------- */
+footer{
+  text-align:center;margin-top:48px;padding-top:22px;
+  color:rgba(255,255,255,.32);font-size:.82rem;font-weight:700;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+
+/* ---------------- animasi masuk ---------------- */
+.card{animation:pop .42s cubic-bezier(.34,1.56,.64,1) backwards}
+@keyframes pop{from{opacity:0;transform:translateY(22px) scale(.94)}to{opacity:1;transform:none}}
+.hide{display:none !important}
+
+/* hormati preferensi "kurangi gerakan" */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.05ms !important}
+}
